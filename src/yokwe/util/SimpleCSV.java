@@ -2,7 +2,6 @@ package yokwe.util;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -111,120 +110,39 @@ public class SimpleCSV {
 		}
 	}
 	
-	public static class Save<E> implements Closeable {
-		private final ClassInfo      classInfo;
-		private final BufferedWriter bw;
-		
-		private void writeHeader() {
-			try {
-				FieldInfo[] fieldInfos = classInfo.fieldInfos;
+	
+	private static class Context {
+		private boolean withHeader = true;
+	}
+	
+	public static <E> Read<E> read(Class<E> clazz) {
+		return new Read<E>(clazz);
+	}
+	public static class Read<E> {
+		private final Context   context;
+		private final ClassInfo classInfo;
 				
-				bw.write(fieldInfos[0].name);
-				for(int i = 1; i < fieldInfos.length; i++) {
-					bw.write(",");
-					bw.write(fieldInfos[i].name);
-				}
-				bw.newLine();
-			} catch (IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
-			}
-		}
-		private Save(Writer w, Class<E> clazz) {
+		private Read(Class<E> clazz) {
+			context   = new Context();
 			classInfo = ClassInfo.get(clazz);
-			bw        = new BufferedWriter(w, BUFFER_SIZE);
-			
-			writeHeader();
 		}
-		private void writeField(String value) throws IOException {
-			if (value.contains(",") || value.contains("\"")) {
-				bw.write("\"");
-				bw.write(value.replaceAll("\"", "\"\"")); // " => ""
-				bw.write("\"");						
-			} else {
-				bw.write(value);
-			}
+		public Read<E> withHeader(boolean newValue) {
+			context.withHeader = newValue;
+			return this;
 		}
-		public void write(E value) {
-			FieldInfo[] fieldInfos = classInfo.fieldInfos;
-			
-			try {
-				writeField(fieldInfos[0].field.get(value).toString());
-				for(int i = 1; i < fieldInfos.length; i++) {
-					bw.write(",");
-					writeField(fieldInfos[i].field.get(value).toString());
-				}
-				bw.newLine();
-			} catch (IllegalArgumentException | IllegalAccessException | IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
+		
+		public static String toStringAsHexChar(String string) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format("(%d)", string.length()));
+			for(int i = 0; i < string.length(); i++) {
+				char c = string.charAt(i);
+				sb.append(String.format("%04X", (int)c));
 			}
+			return sb.toString();
 		}
 
-		@Override
-		public void close() throws IOException {
-			bw.close();
-		}
 		
-		public static <E> Save<E> getInstance(Writer w, Class<E> clazz) {
-			Save<E> ret = new Save<E>(w, clazz);
-			return ret;
-		}
-		public static <E> Save<E> getInstance(File file, Class<E> clazz) {
-			try {
-				File parent = file.getParentFile();
-				if (!parent.exists()) {
-					parent.mkdirs();
-				}
-				
-				Writer w = new FileWriter(file);
-				return getInstance(w, clazz);
-			} catch (IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
-			}
-		}
-		public static <E> Save<E> getInstance(String path, Class<E> clazz) {
-			File file = new File(path);
-			return getInstance(file, clazz);
-		}
-	}
-	
-	public static <E> void save(Writer w, Class<E> clazz, Collection<E> collection) {
-		try (Save<E> save = Save.getInstance(w, clazz)) {
-			for(E e: collection) {
-				save.write(e);
-			}
-		} catch (IOException e) {
-			String exceptionName = e.getClass().getSimpleName();
-			logger.error("{} {}", exceptionName, e);
-			throw new UnexpectedException(exceptionName, e);
-		}
-	}
-	public static <E> void save(File file, Class<E> clazz, Collection<E> collection) {
-		try (Save<E> save = Save.getInstance(file, clazz)) {
-			for(E e: collection) {
-				save.write(e);
-			}
-		} catch (IOException e) {
-			String exceptionName = e.getClass().getSimpleName();
-			logger.error("{} {}", exceptionName, e);
-			throw new UnexpectedException(exceptionName, e);
-		}
-	}
-	public static <E> void save(String path, Class<E> clazz, Collection<E> collection) {
-		File file = new File(path);
-		save(file, clazz, collection);
-	}	
-	
-	public static class Load<E> implements Closeable {
-		final ClassInfo      classInfo;
-		final BufferedReader br;
-		
-		public static String[] parseLine(String line) {
+		private static String[] parseLine(String line) {
 			List<String> list = new ArrayList<>();
 			
 			String lineComma = line + ","; // Add ',' to end of line
@@ -267,13 +185,14 @@ public class SimpleCSV {
 					}
 				}
 				
-				list.add(sb.toString());
+				String name = StringUtil.removeBOM(sb.toString());
+				list.add(name);
 			}
 			
 			return list.toArray(new String[0]);
 		}
-		
-		private void readHeader() {
+
+		private void readHeader(BufferedReader br) {
 			try {
 				String line = br.readLine();
 				if (line == null) {
@@ -290,6 +209,10 @@ public class SimpleCSV {
 				for(int i = 0; i < names.length; i++) {
 					if (names[i].equals(classInfo.names[i])) continue;
 					logger.error("Unexpected name  {}  {}  {}", i, names[i], classInfo.names[i]);
+					for(int j = 0; j < names[i].length(); j++) {
+						logger.error("  names      {}", toStringAsHexChar(names[i]));
+						logger.error("  classInfo  {}", toStringAsHexChar(classInfo.names[i]));
+					}
 					throw new UnexpectedException("Unexpected name");
 				}
 			} catch (IOException e) {
@@ -298,14 +221,8 @@ public class SimpleCSV {
 				throw new UnexpectedException(exceptionName, e);
 			}
 		}
-		private Load(Reader r, Class<E> clazz) {
-			classInfo = ClassInfo.get(clazz);
-			br        = new BufferedReader(r, BUFFER_SIZE);
-	
-			readHeader();
-		}
-		
-		E read() {
+
+		private E read(BufferedReader br) {
 			try {
 				String line = br.readLine();
 				if (line == null) {
@@ -400,56 +317,123 @@ public class SimpleCSV {
 				throw new UnexpectedException(exceptionName, e);
 			}
 		}
-		
-		@Override
-		public void close() throws IOException {
-			br.close();
-		}
-		
-		public static <E> Load<E> getInstance(Reader r, Class<E> clazz) {
-			Load<E> ret = new Load<E>(r, clazz);
-			return ret;
-		}
-		public static <E> Load<E> getInstance(File f, Class<E> clazz) {
-			try {
-				Load<E> ret = new Load<E>(new FileReader(f), clazz);
+
+		public List<E> file(Reader reader) {
+			try (BufferedReader br = new BufferedReader(reader, BUFFER_SIZE)) {
+				if (context.withHeader) {
+					readHeader(br);
+				}
+				
+				List<E> ret = new ArrayList<>();
+				for(;;) {
+					E e = (E)read(br);
+					if (e == null) break;
+					ret.add(e);
+				}
 				return ret;
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public List<E> file(File file) {
+			try {
+				return file(new FileReader(file));
 			} catch (FileNotFoundException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
 			}
 		}
+		public List<E> file(String path) {
+			return file(new File(path));
+		}
 	}
-
-
-	public static <E> List<E> load(Reader reader, Class<E> clazz) {
-		try (Load<E> load = Load.getInstance(reader, clazz)) {
-			List<E> ret = new ArrayList<>();
-			for(;;) {
-				E e = (E)load.read();
-				if (e == null) break;
-				ret.add(e);
+	
+	public static <E> Write<E> write(Class<E> clazz) {
+		return new Write<E>(clazz);
+	}
+	public static class Write<E> {
+		private final Context   context;
+		private final ClassInfo classInfo;
+				
+		private Write(Class<E> clazz) {
+			context   = new Context();
+			classInfo = ClassInfo.get(clazz);
+		}
+		public Write<E> withHeader(boolean newValue) {
+			context.withHeader = newValue;
+			return this;
+		}
+		
+		private void writeHeader(BufferedWriter bw) {
+			try {
+				FieldInfo[] fieldInfos = classInfo.fieldInfos;
+				
+				bw.write(fieldInfos[0].name);
+				for(int i = 1; i < fieldInfos.length; i++) {
+					bw.write(",");
+					bw.write(fieldInfos[i].name);
+				}
+				bw.newLine();
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
 			}
-			return ret;
-		} catch (IOException e) {
-			String exceptionName = e.getClass().getSimpleName();
-			logger.error("{} {}", exceptionName, e);
-			throw new UnexpectedException(exceptionName, e);
 		}
-	}
-	public static <E> List<E> load(File file, Class<E> clazz) {
-		try {
-			List<E> ret = load(new FileReader(file), clazz);
-			return ret;
-		} catch (FileNotFoundException e) {
-			String exceptionName = e.getClass().getSimpleName();
-			logger.error("{} {}", exceptionName, e);
-			throw new UnexpectedException(exceptionName, e);
+		private void writeField(BufferedWriter bw, String value) throws IOException {
+			if (value.contains(",") || value.contains("\"")) {
+				bw.write("\"");
+				bw.write(value.replaceAll("\"", "\"\"")); // " => ""
+				bw.write("\"");						
+			} else {
+				bw.write(value);
+			}
 		}
-	}
-	public static <E> List<E> load(String path, Class<E> clazz) {
-		File file = new File(path);
-		return load(file, clazz);
+		private void write(BufferedWriter bw, E value) {
+			FieldInfo[] fieldInfos = classInfo.fieldInfos;
+			
+			try {
+				writeField(bw, fieldInfos[0].field.get(value).toString());
+				for(int i = 1; i < fieldInfos.length; i++) {
+					bw.write(",");
+					writeField(bw, fieldInfos[i].field.get(value).toString());
+				}
+				bw.newLine();
+			} catch (IllegalArgumentException | IllegalAccessException | IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+
+		public void file(Writer writer, Collection<E> collection) {
+			try (BufferedWriter bw = new BufferedWriter(writer, BUFFER_SIZE)) {
+				if (context.withHeader) {
+					writeHeader(bw);
+				}
+				for(E e: collection) {
+					write(bw, e);
+				}
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public void file(File file, Collection<E> collection) {
+			try {
+				file(new FileWriter(file), collection);
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public void file(String path, Collection<E> collection) {
+			file(new File(path), collection);
+		}
 	}
 }
