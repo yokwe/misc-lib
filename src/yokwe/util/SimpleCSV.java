@@ -10,6 +10,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.LocalDate;
@@ -28,6 +32,12 @@ import yokwe.UnexpectedException;
 
 public class SimpleCSV {
 	static final org.slf4j.Logger logger = LoggerFactory.getLogger(SimpleCSV.class);
+	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public static @interface ColumnName {
+		String value();
+	}
 
 	public static final int BUFFER_SIZE = 64 * 1024;
 	public static final LocalDate     NULL_LOCAL_DATE      = LocalDate.of(1900, 1, 1);
@@ -74,13 +84,30 @@ public class SimpleCSV {
 		final String   name;
 		final Class<?> clazz;
 		final String   clazzName;
+		
+		final Map<String, Enum<?>> enumMap;
 
 		
 		FieldInfo(Field value) {
 			field      = value;
-			name       = field.getName();
+			
+			ColumnName columnName = field.getDeclaredAnnotation(ColumnName.class);
+			name = (columnName == null) ? field.getName() : columnName.value();
+
 			clazz      = field.getType();
 			clazzName  = clazz.getName();
+			
+			if (clazz.isEnum()) {
+				enumMap = new TreeMap<>();
+				
+				@SuppressWarnings("unchecked")
+				Class<Enum<?>> enumClazz = (Class<Enum<?>>)clazz;
+				for(Enum<?> e: enumClazz.getEnumConstants()) {
+					enumMap.put(e.toString(), e);
+				}
+			} else {
+				enumMap = null;
+			}
 		}
 	}
 	
@@ -352,8 +379,17 @@ public class SimpleCSV {
 					}
 						break;
 					default:
-						logger.error("Unexptected fieldInfo.clazzName {}", fieldInfo.clazzName);
-						throw new UnexpectedException("Unexptected fieldInfo.clazzName");
+						if (fieldInfo.enumMap != null) {
+							if (fieldInfo.enumMap.containsKey(value)) {
+								fieldInfo.field.set(data, fieldInfo.enumMap.get(value));
+							} else {
+								logger.error("Unknow enum value  {}  {}", fieldInfo.clazzName, value);
+								throw new UnexpectedException("Unknow enum value");
+							}
+						} else {
+							logger.error("Unexptected fieldInfo.clazzName {}", fieldInfo.clazzName);
+							throw new UnexpectedException("Unexptected fieldInfo.clazzName");
+						}
 					}
 				}
 				
