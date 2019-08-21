@@ -1,5 +1,6 @@
 package yokwe.util;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -31,5 +32,8 @@ public class SafetyMap<K, V> {
 	}
 	public boolean containsKey(K key) {
 		return map.containsKey(key);
+	}
+	public Collection<V> values() {
+		return map.values();
 	}
 }
