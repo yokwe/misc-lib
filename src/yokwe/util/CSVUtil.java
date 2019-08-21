@@ -110,6 +110,56 @@ public class CSVUtil {
 		}
 	}
 	
+	public static String[] parseLine(String line) {
+		List<String> list = new ArrayList<>();
+		
+		String lineComma = line + ","; // Add ',' to end of line
+		int lineLength = lineComma.length();
+		int pos = 0;
+		
+		StringBuilder sb = new StringBuilder();
+		for(;;) {
+			// pos reach to very last ','
+			if (pos == lineLength) break;
+			
+			sb.setLength(0);
+			char firstChar = lineComma.charAt(pos++);
+			if (firstChar == '"') {
+				for(;;) {
+					char c = lineComma.charAt(pos++);
+					
+					if (c == '"') {
+						c = lineComma.charAt(pos++);
+						if (c == ',') {
+							break;
+						} else if (c == '"') {
+							sb.append('"');
+						} else {
+							logger.error("Unexpected c '{}'  {}  '{}'", c, pos, line);
+							throw new UnexpectedException("Unexpected nextChar");
+						}
+					} else {
+						sb.append(c);
+					}
+				}
+			} else if (firstChar == ',') {
+				// empty column, Do nothing
+			} else {
+				sb.append(firstChar);
+				for(;;) {
+					char c = lineComma.charAt(pos++);
+					if (c == ',') break;
+					sb.append(c);
+				}
+			}
+			
+			String name = StringUtil.removeBOM(sb.toString());
+			list.add(name);
+		}
+		
+		return list.toArray(new String[0]);
+	}
+
 	
 	private static class Context {
 		private boolean withHeader = true;
@@ -141,56 +191,6 @@ public class CSVUtil {
 			return sb.toString();
 		}
 
-		
-		private static String[] parseLine(String line) {
-			List<String> list = new ArrayList<>();
-			
-			String lineComma = line + ","; // Add ',' to end of line
-			int lineLength = lineComma.length();
-			int pos = 0;
-			
-			StringBuilder sb = new StringBuilder();
-			for(;;) {
-				// pos reach to very last ','
-				if (pos == lineLength) break;
-				
-				sb.setLength(0);
-				char firstChar = lineComma.charAt(pos++);
-				if (firstChar == '"') {
-					for(;;) {
-						char c = lineComma.charAt(pos++);
-						
-						if (c == '"') {
-							c = lineComma.charAt(pos++);
-							if (c == ',') {
-								break;
-							} else if (c == '"') {
-								sb.append('"');
-							} else {
-								logger.error("Unexpected c '{}'  {}  '{}'", c, pos, line);
-								throw new UnexpectedException("Unexpected nextChar");
-							}
-						} else {
-							sb.append(c);
-						}
-					}
-				} else if (firstChar == ',') {
-					// empty column, Do nothing
-				} else {
-					sb.append(firstChar);
-					for(;;) {
-						char c = lineComma.charAt(pos++);
-						if (c == ',') break;
-						sb.append(c);
-					}
-				}
-				
-				String name = StringUtil.removeBOM(sb.toString());
-				list.add(name);
-			}
-			
-			return list.toArray(new String[0]);
-		}
 
 		private void readHeader(BufferedReader br) {
 			try {
