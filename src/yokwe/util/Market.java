@@ -36,6 +36,8 @@ public class Market {
 	static {
 		List<MarketHoliday> marketHolidayList = SimpleCSV.load(new File(PATH_MARKET_HOLIDAY_CSV), MarketHoliday.class);
 		for(MarketHoliday marketHoliday: marketHolidayList) {
+			if (marketHoliday.date.startsWith("#")) continue;
+			
 			LocalDate date   = LocalDate.parse(marketHoliday.date);
 			boolean   closed = marketHoliday.status.toLowerCase().startsWith("close"); // To avoid confusion comes from misspelled word
 			holidayMap.put(date, new Holiday(date, closed));
@@ -106,20 +108,30 @@ public class Market {
 			return prevDate;
 		}
 	}
-	private static LocalDate T2_SETTLEMENT_START_DATE = LocalDate.of(2017, 9, 5);
-	// See settlement calendar below
+	
+	
+	// See settlement calendar below for settlement date
 	//    https://stlcl.com/?year=2016&month=11
-	private static Map<LocalDate, LocalDate> irregularlementDateMap = new TreeMap<>();
-	static {
-		irregularlementDateMap.put(LocalDate.of(2016, 11, 10), LocalDate.of(2016, 11, 16));
-		irregularlementDateMap.put(LocalDate.of(2017, 10,  6), LocalDate.of(2017, 10, 11));
-		irregularlementDateMap.put(LocalDate.of(2018, 10,  4), LocalDate.of(2018, 10,  9));
-		irregularlementDateMap.put(LocalDate.of(2018, 10,  5), LocalDate.of(2018, 10, 10));
-		irregularlementDateMap.put(LocalDate.of(2018, 11,  9), LocalDate.of(2018, 11, 14));
+	public static final String PATH_IRREGULAR_SETTLEMENT = "data/market/irregularSettlement.csv";
+	public static class IrregularSettlement {
+		public String tradeDate;
+		public String settlementDate;
 	}
+	private static Map<LocalDate, LocalDate> irregularSttlementDateMap = new TreeMap<>();
+	//                 tradeDate  settlementDate
+	static {
+		List<IrregularSettlement> list = SimpleCSV.load(PATH_IRREGULAR_SETTLEMENT, IrregularSettlement.class);
+		for(IrregularSettlement irregularSettlement: list) {
+			LocalDate tradeDate      = LocalDate.parse(irregularSettlement.tradeDate);
+			LocalDate settlementDate = LocalDate.parse(irregularSettlement.settlementDate);
+			irregularSttlementDateMap.put(tradeDate, settlementDate);
+		}
+	}
+	
+	private static LocalDate T2_SETTLEMENT_START_DATE = LocalDate.of(2017, 9, 5);
 	public static LocalDate toSettlementDate(LocalDate tradeDate) {
-		if (irregularlementDateMap.containsKey(tradeDate)) {
-			return irregularlementDateMap.get(tradeDate);
+		if (irregularSttlementDateMap.containsKey(tradeDate)) {
+			return irregularSttlementDateMap.get(tradeDate);
 		}
 			
 		LocalDate t0 = tradeDate;
@@ -133,4 +145,5 @@ public class Market {
 			return t2;
 		}
 	}
+	
 }
