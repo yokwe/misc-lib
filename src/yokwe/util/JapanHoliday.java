@@ -60,7 +60,7 @@ public class JapanHoliday {
 	
 	private static Map<LocalDate, Data> publicHolidayMap = new TreeMap<>();
 	static {
-		List<Data> dataList = SimpleCSV.read(Data.class).file(PATH_JAPAN_HOLIDAY_CSV);
+		List<Data> dataList = CSVUtil.read(Data.class).file(PATH_JAPAN_HOLIDAY_CSV);
 		
 		for(Data data: dataList) {
 			if (data.event.length() == 0) continue;

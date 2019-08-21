@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
 
-public class SimpleCSV {
-	static final org.slf4j.Logger logger = LoggerFactory.getLogger(SimpleCSV.class);
+public class CSVUtil {
+	static final org.slf4j.Logger logger = LoggerFactory.getLogger(CSVUtil.class);
 	
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)

@@ -33,7 +33,7 @@ public class Market {
 	}
 	private static final Map<LocalDate, Holiday> holidayMap = new TreeMap<>();
 	static {
-		List<MarketHoliday> marketHolidayList = SimpleCSV.read(MarketHoliday.class).file(PATH_MARKET_HOLIDAY_CSV);
+		List<MarketHoliday> marketHolidayList = CSVUtil.read(MarketHoliday.class).file(PATH_MARKET_HOLIDAY_CSV);
 		for(MarketHoliday marketHoliday: marketHolidayList) {
 			if (marketHoliday.date.startsWith("#")) continue;
 			
@@ -119,7 +119,7 @@ public class Market {
 	private static Map<LocalDate, LocalDate> irregularSttlementDateMap = new TreeMap<>();
 	//                 tradeDate  settlementDate
 	static {
-		List<IrregularSettlement> list = SimpleCSV.read(IrregularSettlement.class).file(PATH_IRREGULAR_SETTLEMENT);
+		List<IrregularSettlement> list = CSVUtil.read(IrregularSettlement.class).file(PATH_IRREGULAR_SETTLEMENT);
 
 		for(IrregularSettlement irregularSettlement: list) {
 			LocalDate tradeDate      = LocalDate.parse(irregularSettlement.tradeDate);
