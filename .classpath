@@ -17,5 +17,6 @@
 	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/juh.jar"/>
 	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/jurt.jar"/>
 	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/ridl.jar"/>
+	<classpathentry kind="lib" path="data/jar/commons-logging-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
