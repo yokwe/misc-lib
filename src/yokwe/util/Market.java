@@ -1,6 +1,5 @@
 package yokwe.util;
 
-import java.io.File;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,7 +33,7 @@ public class Market {
 	}
 	private static final Map<LocalDate, Holiday> holidayMap = new TreeMap<>();
 	static {
-		List<MarketHoliday> marketHolidayList = SimpleCSV.load(new File(PATH_MARKET_HOLIDAY_CSV), MarketHoliday.class);
+		List<MarketHoliday> marketHolidayList = SimpleCSV.read(MarketHoliday.class).file(PATH_MARKET_HOLIDAY_CSV);
 		for(MarketHoliday marketHoliday: marketHolidayList) {
 			if (marketHoliday.date.startsWith("#")) continue;
 			
@@ -120,7 +119,8 @@ public class Market {
 	private static Map<LocalDate, LocalDate> irregularSttlementDateMap = new TreeMap<>();
 	//                 tradeDate  settlementDate
 	static {
-		List<IrregularSettlement> list = SimpleCSV.load(PATH_IRREGULAR_SETTLEMENT, IrregularSettlement.class);
+		List<IrregularSettlement> list = SimpleCSV.read(IrregularSettlement.class).file(PATH_IRREGULAR_SETTLEMENT);
+
 		for(IrregularSettlement irregularSettlement: list) {
 			LocalDate tradeDate      = LocalDate.parse(irregularSettlement.tradeDate);
 			LocalDate settlementDate = LocalDate.parse(irregularSettlement.settlementDate);

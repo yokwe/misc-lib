@@ -1,6 +1,5 @@
 package yokwe.util;
 
-import java.io.File;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -61,7 +60,7 @@ public class JapanHoliday {
 	
 	private static Map<LocalDate, Data> publicHolidayMap = new TreeMap<>();
 	static {
-		List<Data> dataList = SimpleCSV.load(new File(PATH_JAPAN_HOLIDAY_CSV), Data.class);
+		List<Data> dataList = SimpleCSV.read(Data.class).file(PATH_JAPAN_HOLIDAY_CSV);
 		
 		for(Data data: dataList) {
 			if (data.event.length() == 0) continue;
