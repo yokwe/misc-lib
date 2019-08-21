@@ -424,6 +424,14 @@ public class CSVUtil {
 			}
 		}
 		public void file(File file, Collection<E> collection) {
+			// Create parent folder if not exists
+			{
+				File parent = file.getParentFile();
+				if (!parent.exists()) {
+					parent.mkdirs();
+				}
+			}
+			
 			try {
 				file(new FileWriter(file), collection);
 			} catch (IOException e) {
@@ -434,6 +442,63 @@ public class CSVUtil {
 		}
 		public void file(String path, Collection<E> collection) {
 			file(new File(path), collection);
+		}
+		
+		
+		private BufferedWriter bwStart = null;
+		public void start(String path) {
+			start(new File(path));
+		}
+		public void start(File file) {
+			// Create parent folder if not exists
+			{
+				File parent = file.getParentFile();
+				if (!parent.exists()) {
+					parent.mkdirs();
+				}
+			}
+			
+			try {
+				start(new FileWriter(file));
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public void start(Writer writer) {
+			// Sanity check
+			if (bwStart != null) {
+				logger.error("bwStart != null");
+				throw new UnexpectedException("bwStart != null");
+			}
+			bwStart = new BufferedWriter(writer, BUFFER_SIZE);
+			if (context.withHeader) {
+				writeHeader(bwStart);
+			}
+		}
+		public void write(E e) {
+			// Sanity check
+			if (bwStart == null) {
+				logger.error("bwStart == null");
+				throw new UnexpectedException("bwStart == null");
+			}
+			write(bwStart, e);
+		}
+		public void stop() {
+			// Sanity check
+			if (bwStart == null) {
+				logger.error("bwStart == null");
+				throw new UnexpectedException("bwStart == null");
+			}
+			try {
+				bwStart.close();
+				bwStart = null;
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
 		}
 	}
 }
