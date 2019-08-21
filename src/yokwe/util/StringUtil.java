@@ -65,4 +65,13 @@ public class StringUtil {
 		return builder.build();
 	}
 	
+	public static String removeBOM(String string) {
+		String ret = new String(string);
+		
+		// Remove BOM
+		if (ret.startsWith("\uFEFF")) ret = ret.substring(1);
+		if (ret.startsWith("\uFFFE")) ret = ret.substring(1);
+		
+		return ret;
+	}
 }
