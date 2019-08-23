@@ -110,56 +110,140 @@ public class CSVUtil {
 		}
 	}
 	
-	public static String[] parseLine(String line) {
-		List<String> list = new ArrayList<>();
-		
-		String lineComma = line + ","; // Add ',' to end of line
-		int lineLength = lineComma.length();
-		int pos = 0;
-		
-		StringBuilder sb = new StringBuilder();
-		for(;;) {
-			// pos reach to very last ','
-			if (pos == lineLength) break;
+	public static String[] parseLine(BufferedReader br) {
+		try {			
+			// Peek one char to check end of stream
+			{
+				br.mark(1);
+				int firstChar = br.read();
+				br.reset();
+				if (firstChar == -1) return null;
+			}
 			
-			sb.setLength(0);
-			char firstChar = lineComma.charAt(pos++);
-			if (firstChar == '"') {
-				for(;;) {
-					char c = lineComma.charAt(pos++);
+			List<String> list  = new ArrayList<>();
+			StringBuffer field = new StringBuffer();
+			boolean endOfRecord = false;
+			for(;;) {
+				if (endOfRecord) break;
+				
+				int fieldFirstChar = br.read();
+				if (fieldFirstChar == -1) {
+					// end of stream
+					logger.error("Unexpected end of stream");
+					logger.error("  list   !{}!", list);
+					logger.error("  field  !{}!", field.toString());
+					throw new UnexpectedException("Unexpected end of stream");
+				} else if (fieldFirstChar == '\n') {
+					// end of record
+					field.setLength(0);
+					list.add("");
+//					logger.debug("nl  field  \"\"");
+					break;
+				} else if (fieldFirstChar == ',') {
+					// end of field -- empty field
+					field.setLength(0);
+					list.add("");
+//					logger.debug("emp field  \"\"");
+				} else if (fieldFirstChar == '"') {
+					// quoted field
+					field.setLength(0);
 					
-					if (c == '"') {
-						c = lineComma.charAt(pos++);
-						if (c == ',') {
-							break;
+					for(;;) {
+						int c = br.read();
+						if (c == -1) {
+							logger.error("Unexpected end of stream");
+							logger.error("  list   !{}!", list);
+							logger.error("  field  !{}!", field.toString());
+							throw new UnexpectedException("Unexpected end of stream");
 						} else if (c == '"') {
-							sb.append('"');
+							// end of field, end of record or double quote
+							int c2 = br.read();
+							if (c2 == -1) {
+								logger.error("Unexpected end of stream");
+								logger.error("  list   !{}!", list);
+								logger.error("  field  !{}!", field.toString());
+								throw new UnexpectedException("Unexpected end of stream");
+							} else if (c2 == ',') {
+								// end of field
+								break;
+							} else if (c2 == '\n') {
+								// end of record
+								endOfRecord = true;
+								break;
+							} else if (c2 == '"') {
+								// double quote
+								field.append('"');
+							} else {
+								logger.error("Unexpected back slash escape  {}", c2);
+								logger.error("  list   !{}!", list);
+								logger.error("  field  !{}!", field.toString());
+								throw new UnexpectedException("Unexpected back slash escape");
+							}
+						} else if (c == '\\') {
+							// back slash escape
+							int c2 = br.read();
+							if (c2 == -1) {
+								logger.error("Unexpected end of stream");
+								logger.error("  list   !{}!", list);
+								logger.error("  field  !{}!", field.toString());
+								throw new UnexpectedException("Unexpected end of stream");
+							} else if (c2 == 'n') {
+								// \n
+								field.append('\n');
+							} else if (c2 == 'r') {
+								// \r
+								field.append('\r');
+							} else {
+								logger.error("Unexpected back slash escape  {}", c2);
+								logger.error("  list   !{}!", list);
+								logger.error("  field  !{}!", field.toString());
+								throw new UnexpectedException("Unexpected back slash escape");
+							}
 						} else {
-							logger.error("Unexpected c '{}'  {}  '{}'", c, pos, line);
-							throw new UnexpectedException("Unexpected nextChar");
+							field.append((char)c);
 						}
-					} else {
-						sb.append(c);
 					}
-				}
-			} else if (firstChar == ',') {
-				// empty column, Do nothing
-			} else {
-				sb.append(firstChar);
-				for(;;) {
-					char c = lineComma.charAt(pos++);
-					if (c == ',') break;
-					sb.append(c);
+					// append field to list
+					list.add(field.toString());
+//					logger.debug("quo field  {}!", field.toString());
+				} else {
+					// ordinary field
+					field.setLength(0);
+					
+					field.append((char)fieldFirstChar);
+					for(;;) {
+						int c = br.read();
+						if (c == -1) {
+							logger.error("Unexpected end of stream");
+							logger.error("  list   !{}!", list);
+							logger.error("  field  !{}!", field.toString());
+							throw new UnexpectedException("Unexpected end of stream");
+						} else if (c == ',') {
+							// end of field
+							break;
+						} else if (c == '\n') {
+							// end of record
+							endOfRecord = true;
+							break;
+						} else {
+							field.append((char)c);
+						}
+					}
+					// append field to list
+					list.add(field.toString());
+//					logger.debug("ord field  {}!", field.toString());
 				}
 			}
 			
-			String name = StringUtil.removeBOM(sb.toString());
-			list.add(name);
+//			logger.debug("list  {}", list);
+			return list.toArray(new String[0]);
+		} catch (IOException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
 		}
-		
-		return list.toArray(new String[0]);
 	}
-
+	
 	
 	private static class Context {
 		private boolean withHeader = true;
@@ -193,44 +277,34 @@ public class CSVUtil {
 
 
 		private void readHeader(BufferedReader br) {
-			try {
-				String line = br.readLine();
-				if (line == null) {
-					logger.error("Unexpected EOF");
-					throw new UnexpectedException("Unexpected EOF");
+			String[] names = parseLine(br);
+			if (names == null) {
+				logger.error("Unexpected EOF");
+				throw new UnexpectedException("Unexpected EOF");
+			}
+			
+			// Sanity check
+			if (classInfo.names.length != names.length) {
+				logger.error("Unexpected line  {}  {}  {}", classInfo.names.length, names.length, Arrays.asList(names));
+				throw new UnexpectedException("Unexpected line");
+			}
+			for(int i = 0; i < names.length; i++) {
+				if (names[i].equals(classInfo.names[i])) continue;
+				logger.error("Unexpected name  {}  {}  {}", i, names[i], classInfo.names[i]);
+				for(int j = 0; j < names[i].length(); j++) {
+					logger.error("  names      {}", names[i]);
+					logger.error("             {}", toStringAsHexChar(names[i]));
+					logger.error("  classInfo  {}", classInfo.names[i]);
+					logger.error("             {}", toStringAsHexChar(classInfo.names[i]));
 				}
-				String[] names = parseLine(line);
-				
-				// Sanity check
-				if (classInfo.names.length != names.length) {
-					logger.error("Unexpected line  {}  {}  {}", classInfo.names.length, names.length, Arrays.asList(names));
-					throw new UnexpectedException("Unexpected line");
-				}
-				for(int i = 0; i < names.length; i++) {
-					if (names[i].equals(classInfo.names[i])) continue;
-					logger.error("Unexpected name  {}  {}  {}", i, names[i], classInfo.names[i]);
-					for(int j = 0; j < names[i].length(); j++) {
-						logger.error("  names      {}", names[i]);
-						logger.error("             {}", toStringAsHexChar(names[i]));
-						logger.error("  classInfo  {}", classInfo.names[i]);
-						logger.error("             {}", toStringAsHexChar(classInfo.names[i]));
-					}
-					throw new UnexpectedException("Unexpected name");
-				}
-			} catch (IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
+				throw new UnexpectedException("Unexpected name");
 			}
 		}
 
 		private E read(BufferedReader br) {
 			try {
-				String line = br.readLine();
-				if (line == null) {
-					return null;
-				}
-				String[] values = parseLine(line);
+				String[] values = parseLine(br);
+				if (values == null) return null;
 
 				@SuppressWarnings("unchecked")
 				Class<E> clazz = (Class<E>)classInfo.clazz;
@@ -313,7 +387,7 @@ public class CSVUtil {
 				}
 				
 				return data;
-			} catch (IOException | InstantiationException | IllegalAccessException e) {
+			} catch (InstantiationException | IllegalAccessException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
@@ -386,9 +460,31 @@ public class CSVUtil {
 			}
 		}
 		private void writeField(BufferedWriter bw, String value) throws IOException {
-			if (value.contains(",") || value.contains("\"")) {
+			if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
 				bw.write("\"");
-				bw.write(value.replaceAll("\"", "\"\"")); // " => ""
+				
+				char[] charArray = value.toCharArray();
+				for(int i = 0; i < charArray.length; i++) {
+					char c = charArray[i];
+					switch(c) {
+					case '"':
+						bw.write('"');
+						bw.write('"');
+						break;
+					case '\n':
+						bw.write('\\');
+						bw.write('n');
+						break;
+					case '\r':
+						bw.write('\\');
+						bw.write('r');
+						break;
+					default:
+						bw.write(c);
+						break;
+					}
+				}
+				
 				bw.write("\"");						
 			} else {
 				bw.write(value);
