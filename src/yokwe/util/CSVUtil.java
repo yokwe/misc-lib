@@ -235,6 +235,10 @@ public class CSVUtil {
 				}
 			}
 			
+			// Remove byte order mark from list element
+			for(String string: list) {
+				string = StringUtil.removeBOM(string);
+			}
 //			logger.debug("list  {}", list);
 			return list.toArray(new String[0]);
 		} catch (IOException e) {
