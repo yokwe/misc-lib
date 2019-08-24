@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -274,6 +275,11 @@ public class CSVUtil {
 			logger.error("{} {}", exceptionName, e);
 			throw new UnexpectedException(exceptionName, e);
 		}
+	}
+	public static String[] parseLine(String string) {
+		StringReader   sr = new StringReader(string);
+		BufferedReader br = new BufferedReader(sr);
+		return parseLine(br);
 	}
 	
 	
