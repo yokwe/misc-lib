@@ -295,11 +295,10 @@ public class CSVUtil {
 			for(int i = 0; i < names.length; i++) {
 				if (names[i].equals(classInfo.names[i])) continue;
 				logger.error("Unexpected name  {}  {}  {}", i, names[i], classInfo.names[i]);
-				for(int j = 0; j < names[i].length(); j++) {
-					logger.error("  names      {}", names[i]);
-					logger.error("             {}", toStringAsHexChar(names[i]));
-					logger.error("  classInfo  {}", classInfo.names[i]);
-					logger.error("             {}", toStringAsHexChar(classInfo.names[i]));
+				for(int j = 0; j < names.length; j++) {
+					logger.error("{} / {}", j, j, names.length);
+					logger.error("  names      !{}!  {}", names[j], toStringAsHexChar(names[j]));
+					logger.error("  classInfo  !{}!  {}", classInfo.names[j], toStringAsHexChar(classInfo.names[j]));
 				}
 				throw new UnexpectedException("Unexpected name");
 			}
