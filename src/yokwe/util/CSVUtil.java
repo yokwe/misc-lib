@@ -159,13 +159,27 @@ public class CSVUtil {
 							// end of field, end of record or double quote
 							int c2 = br.read();
 							if (c2 == -1) {
-								logger.error("Unexpected end of stream");
-								logger.error("  list   !{}!", list);
-								logger.error("  field  !{}!", field.toString());
-								throw new UnexpectedException("Unexpected end of stream");
+								// Special handling of last record with no \n
+								endOfRecord = true;
+								break;
 							} else if (c2 == ',') {
 								// end of field
 								break;
+							} else if (c2 == '\r') {
+								// end of record
+								int c3 = br.read();
+								if (c3 == -1) {
+									logger.error("Unexpected end of stream");
+									logger.error("  list   !{}!", list);
+									logger.error("  field  !{}!", field.toString());
+									throw new UnexpectedException("Unexpected end of stream");
+								} else if (c3 == '\n') {
+									endOfRecord = true;
+									break;
+								} else {
+									logger.error("Unexpected char {}", String.format("%X", c3));
+									throw new UnexpectedException("Unexpected char");
+								}
 							} else if (c2 == '\n') {
 								// end of record
 								endOfRecord = true;
@@ -214,13 +228,27 @@ public class CSVUtil {
 					for(;;) {
 						int c = br.read();
 						if (c == -1) {
-							logger.error("Unexpected end of stream");
-							logger.error("  list   !{}!", list);
-							logger.error("  field  !{}!", field.toString());
-							throw new UnexpectedException("Unexpected end of stream");
+							// Special handling of last record with no \n
+							endOfRecord = true;
+							break;
 						} else if (c == ',') {
 							// end of field
 							break;
+						} else if (c == '\r') {
+							// end of record
+							int c2 = br.read();
+							if (c2 == -1) {
+								logger.error("Unexpected end of stream");
+								logger.error("  list   !{}!", list);
+								logger.error("  field  !{}!", field.toString());
+								throw new UnexpectedException("Unexpected end of stream");
+							} else if (c2 == '\n') {
+								endOfRecord = true;
+								break;
+							} else {
+								logger.error("Unexpected char {}", String.format("%X", c2));
+								throw new UnexpectedException("Unexpected char");
+							}
 						} else if (c == '\n') {
 							// end of record
 							endOfRecord = true;
@@ -289,16 +317,29 @@ public class CSVUtil {
 			
 			// Sanity check
 			if (classInfo.names.length != names.length) {
-				logger.error("Unexpected line  {}  {}  {}", classInfo.names.length, names.length, Arrays.asList(names));
-				throw new UnexpectedException("Unexpected line");
+				logger.error("Unexpected length  {}  {}  {}", classInfo.names.length, names.length, Arrays.asList(names));
+				logger.error("classInfo  {}", classInfo.clazz.getName());
+				logger.error("====");
+				for(int j = 0; j < classInfo.fieldInfos.length; j++) {
+					logger.info("  clasInfo   {}  {}", j, classInfo.names[j]);
+				}
+				logger.error("====");
+				for(int j = 0; j < names.length; j++) {
+					logger.info("  names      {}  {}", j, names[j]);
+				}
+				throw new UnexpectedException("Unexpected length");
 			}
 			for(int i = 0; i < names.length; i++) {
 				if (names[i].equals(classInfo.names[i])) continue;
 				logger.error("Unexpected name  {}  {}  {}", i, names[i], classInfo.names[i]);
+				logger.error("classInfo  {}", classInfo.clazz.getName());
+				logger.error("====");
+				for(int j = 0; j < classInfo.fieldInfos.length; j++) {
+					logger.info("  clasInfo   {}  {}  {}", j, classInfo.names[j], toStringAsHexChar(classInfo.names[j]));
+				}
+				logger.error("====");
 				for(int j = 0; j < names.length; j++) {
-					logger.error("{} / {}", j, j, names.length);
-					logger.error("  names      !{}!  {}", names[j], toStringAsHexChar(names[j]));
-					logger.error("  classInfo  !{}!  {}", classInfo.names[j], toStringAsHexChar(classInfo.names[j]));
+					logger.info("  names      {}  {}  {}", j, names[j], toStringAsHexChar(names[j]));
 				}
 				throw new UnexpectedException("Unexpected name");
 			}
