@@ -464,6 +464,7 @@ public class CSVUtil {
 			}
 		}
 		public List<E> file(File file) {
+			if (!file.exists()) return null;
 			try {
 				return file(new FileReader(file));
 			} catch (FileNotFoundException e) {
