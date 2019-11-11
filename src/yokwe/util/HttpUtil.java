@@ -48,7 +48,9 @@ public class HttpUtil {
 	private static final String  DEFAULT_TRACE_DIR  = "tmp/http";
 	private static final String  DEFAULT_CHARSET    = "UTF-8";
 	private static final String  DEFAULT_REFERER    = null;
-	private static final String  DEFAULT_USER_AGENT = "Mozilla";
+	private static final String  DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36";
+	private static final String  DEFAULT_COOKIE     = null;
+	private static final String  DEFAULT_CONNECTION = "keep-alive";
 
 	private static class Context {
 		boolean trace;
@@ -56,13 +58,17 @@ public class HttpUtil {
 		String  charset;
 		String  referer;
 		String  userAgent;
+		String  cookie;
+		String  connection;
 		
 		private Context() {
-			trace     = DEFAULT_TRACE;
-			traceDir  = DEFAULT_TRACE_DIR;
-			charset   = DEFAULT_CHARSET;
-			referer   = DEFAULT_REFERER;
-			userAgent = DEFAULT_USER_AGENT;
+			trace      = DEFAULT_TRACE;
+			traceDir   = DEFAULT_TRACE_DIR;
+			charset    = DEFAULT_CHARSET;
+			referer    = DEFAULT_REFERER;
+			userAgent  = DEFAULT_USER_AGENT;
+			cookie     = DEFAULT_COOKIE;
+			connection = DEFAULT_CONNECTION;
 		}
 	}
 	
@@ -118,12 +124,30 @@ public class HttpUtil {
 		context.userAgent = newValue;
 		return this;
 	}
+	public HttpUtil withCookie(String newValue) {
+		context.cookie = newValue;
+		return this;
+	}
+	
+	public HttpUtil withConnection(String newValue) {
+		context.connection = newValue;
+		return this;
+	}
 
 	public Result download(String url) {
 		HttpGet httpGet = new HttpGet(url);
-		httpGet.setHeader("User-Agent", context.userAgent);
+
+		if (context.userAgent != null) {
+			httpGet.setHeader("User-Agent", context.userAgent);
+		}
 		if (context.referer != null) {
-			httpGet.setHeader("Referer",    context.referer);
+			httpGet.setHeader("Referer", context.referer);
+		}
+		if (context.cookie != null) {
+			httpGet.setHeader("Cookie", context.cookie);
+		}
+		if (context.connection != null) {
+			httpGet.setHeader("Connection", context.connection);
 		}
 
 		int retryCount = 0;
