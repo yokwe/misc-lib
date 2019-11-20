@@ -511,7 +511,7 @@ public class CSVUtil {
 			}
 		}
 		private void writeField(BufferedWriter bw, String value) throws IOException {
-			if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+			if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r") || value.contains(";")) {
 				bw.write("\"");
 				
 				char[] charArray = value.toCharArray();
