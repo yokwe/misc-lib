@@ -1,7 +1,9 @@
 package yokwe.util;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -51,6 +53,7 @@ public class HttpUtil {
 	private static final String  DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36";
 	private static final String  DEFAULT_COOKIE     = null;
 	private static final String  DEFAULT_CONNECTION = "keep-alive";
+	private static final boolean DEFAULT_RAW_DATA   = false;
 
 	private static class Context {
 		boolean trace;
@@ -60,6 +63,7 @@ public class HttpUtil {
 		String  userAgent;
 		String  cookie;
 		String  connection;
+		boolean rawData;
 		
 		private Context() {
 			trace      = DEFAULT_TRACE;
@@ -69,6 +73,7 @@ public class HttpUtil {
 			userAgent  = DEFAULT_USER_AGENT;
 			cookie     = DEFAULT_COOKIE;
 			connection = DEFAULT_CONNECTION;
+			rawData    = DEFAULT_RAW_DATA;
 		}
 	}
 	
@@ -78,8 +83,9 @@ public class HttpUtil {
 		public final Map<String, String> headerMap;
 		public final String              timestamp;
 		public final String              path;
+		public final byte[]              rawData;
 		
-		private Result (Context context, String url, String result, Map<String, String> headerMap) {
+		private Result (Context context, String url, String result, Map<String, String> headerMap, byte[] rawData) {
 			this.url       = url;
 			this.result    = result;
 			this.headerMap = headerMap;
@@ -88,10 +94,16 @@ public class HttpUtil {
 			if (context.trace) {
 				this.path = String.format("%s/%s", context.traceDir, timestamp);
 				
-				FileUtil.write().file(this.path, result);
+				if (result != null) {
+					FileUtil.write().file(this.path, result);
+				} else {
+					FileUtil.write().file(this.path, rawData);
+				}
 			} else {
 				this.path = null;
 			}
+			
+			this.rawData = rawData;
 		}
 	}
 	
@@ -128,9 +140,12 @@ public class HttpUtil {
 		context.cookie = newValue;
 		return this;
 	}
-	
 	public HttpUtil withConnection(String newValue) {
 		context.connection = newValue;
+		return this;
+	}
+	public HttpUtil withRawData(boolean newValue) {
+		context.rawData = newValue;
 		return this;
 	}
 
@@ -189,13 +204,19 @@ public class HttpUtil {
 						headerMap.put(key, value);
 					}
 
-					String result = getContent(response.getEntity());
-					Result ret = new Result(context, url, result, headerMap);
+					byte[] rawData = getRawData(response.getEntity());
+					String result;
+					if (context.rawData) {
+						result = null;
+					} else {
+						result = toString(rawData);
+					}
+					Result ret = new Result(context, url, result, headerMap, rawData);
 					
 					if (ret.path != null) {
-						logger.info(String.format("%s %7d %s", ret.timestamp, ret.result.length(), ret.url));
+						logger.info(String.format("%s %7d %s", ret.timestamp, ret.rawData.length, ret.url));
 					}
-					return ret; 
+					return ret;
 				}
 				
 				// Other code
@@ -204,7 +225,12 @@ public class HttpUtil {
 				logger.error("code {}", code);
 				HttpEntity entity = response.getEntity();
 				if (entity != null) {
-			    	logger.error("entity {}", getContent(entity));
+					if (context.rawData) {
+						logger.error("entity RAW_DATA");
+					} else {
+						byte[] rawData = getRawData(response.getEntity());
+				    	logger.error("entity {}", toString(rawData));
+					}
 				}
 				throw new UnexpectedException("download");
 			} catch (IOException | InterruptedException e) {
@@ -215,24 +241,34 @@ public class HttpUtil {
 		}
 	}
 	
-	private String getContent(HttpEntity entity) {
+	private byte[] getRawData(HttpEntity entity) {
 		if (entity == null) {
 			logger.error("entity is null");
 			throw new UnexpectedException("entity is null");
 		}
-    	try (InputStreamReader isr = new InputStreamReader(entity.getContent(), context.charset)) {
-     		char[]        cbuf = new char[1024 * 64];
-       		StringBuilder ret  = new StringBuilder();
+ 		byte[] buf = new byte[1024 * 64];
+    	try (BufferedInputStream bis = new BufferedInputStream(entity.getContent(), buf.length)) {
+       		ByteArrayOutputStream baos = new ByteArrayOutputStream();
        		for(;;) {
-    			int len = isr.read(cbuf);
+    			int len = bis.read(buf);
     			if (len == -1) break;
-    			ret.append(cbuf, 0, len);
+    			baos.write(buf, 0, len);
     		}
-    	   	return ret.toString();
+    	   	return baos.toByteArray();
     	} catch (IOException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.error("{} {}", exceptionName, e);
 			throw new UnexpectedException(exceptionName, e);
 		}
- 	}
+	}
+	private String toString(byte[] data) {
+		try {
+			String ret = new String(data, context.charset);
+			return ret;
+		} catch (UnsupportedEncodingException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
 }
