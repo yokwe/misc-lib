@@ -1,5 +1,6 @@
 package yokwe.util;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -94,6 +95,28 @@ public class FileUtil {
 			}
 		}
 		public void file(String path, String content) {
+			file (new File(path), content);
+		}
+		
+		public void file(File file, byte[] content) {
+			char[] buffer = new char[65536];
+			
+			// Make parent directory if necessary.
+			{
+				File parent = file.getParentFile();
+				if (!parent.exists()) {
+					parent.mkdirs();
+				}
+			}
+			try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), buffer.length)) {
+				bos.write(content);
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public void file(String path, byte[] content) {
 			file (new File(path), content);
 		}
 	}
