@@ -85,6 +85,7 @@ public class Sheet {
 		public final int      fieldType;					
 		public final String   numberFormat;
 		public final boolean  isDate;
+		public final boolean  isInteger;
 		
 		public ColumnInfo(String name, int index, Field field) {
 			this.name         = name;
@@ -95,6 +96,7 @@ public class Sheet {
 			NumberFormat numberFormat = field.getDeclaredAnnotation(NumberFormat.class);
 			this.numberFormat = (numberFormat == null) ? null : numberFormat.value();
 			this.isDate       = SpreadSheet.FORMAT_DATE.equals(this.numberFormat);
+			this.isInteger    = SpreadSheet.FORMAT_INTEGER.equals(this.numberFormat);
 		}
 		
 		public static List<ColumnInfo> getColumnInfoList(XSpreadsheet xSpreadsheet, int headerRow, Field[] fields) {
@@ -470,6 +472,7 @@ public class Sheet {
 							Field   field     = columnInfo.field;
 							int     fieldType = columnInfo.fieldType;
 							boolean isDate    = columnInfo.isDate;
+							boolean isInteger = columnInfo.isInteger;
 							
 							String extractMapKey = (rowBegin + i) + "-" + columnInfo.index;
 							Object o = extractMap.get(extractMapKey);
@@ -523,6 +526,8 @@ public class Sheet {
 								if (fieldType == HASHCODE_CLASS_STRING) {
 									if (isDate) {
 										field.set(data, SpreadSheet.toDateString(value));
+									} else if (isInteger) {
+										field.set(data, String.valueOf((long)value));
 									} else {
 										field.set(data, String.valueOf(value));
 									}
