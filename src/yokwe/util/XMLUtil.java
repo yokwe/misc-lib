@@ -1,5 +1,9 @@
 package yokwe.util;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -164,7 +168,7 @@ public class XMLUtil {
 		}
 	}
 	
-	public static Stream<XMLElement> buildStream(InputStream in) {
+	public static Stream<XMLElement> buildStream(InputStream is) {
 		try {
 			// Build handler
 			Stream.Builder<XMLElement> builder = Stream.builder();
@@ -176,15 +180,34 @@ public class XMLUtil {
 			SAXParser parser = saxParserFactory.newSAXParser();
 
 			// parse
-			parser.parse(in, handler);
+			parser.parse(is, handler);
 			
-			// return Stream<XMLElement
+			// return Stream<XMLElement>
 			return builder.build();
 		} catch (ParserConfigurationException | SAXException | IOException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.error("{} {}", exceptionName, e);
 			throw new UnexpectedException(exceptionName, e);
+		} finally {
+			try {
+				is.close();
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
 		}
 	}
 
+	public static Stream<XMLElement> buildStream(File file) {
+		try {
+			InputStream         is  = new FileInputStream(file);
+			BufferedInputStream bis = new BufferedInputStream(is, 64 * 1024);
+			return buildStream(bis);
+		} catch (FileNotFoundException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
 }
