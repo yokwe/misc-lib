@@ -88,6 +88,14 @@ public class XMLUtil {
 				throw new UnexpectedException("Unpexpected attributeName");
 			}
 		}
+		public String getAttributeValueOrNull(String attributeName) {
+			if (attributeMap.containsKey(attributeName)) {
+				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
+				return xmlAttribute.value;
+			} else {
+				return null;
+			}
+		}
 	}
 	
 	public static class XMLAttribute {
