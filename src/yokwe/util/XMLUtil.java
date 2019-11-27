@@ -40,7 +40,8 @@ public class XMLUtil {
 		
 		public final Map<String, XMLAttribute> attributeMap;
 		
-		public final StringBuilder content;
+		private final StringBuilder contentBuffer;
+		public        String        content;
 		
 		private XMLElement(String path, String uri, String localName, String qName, Attributes attributes) {
 			this.path          = path;
@@ -48,7 +49,8 @@ public class XMLUtil {
 			this.localName     = localName;
 			this.qName         = qName;
 			this.attributeMap  = new TreeMap<>();
-			this.content       = new StringBuilder();
+			this.contentBuffer = new StringBuilder();
+			this.content       = "";
 			
 			List<XMLAttribute> attributeList = XMLAttribute.getInstance(attributes);
 			for(XMLAttribute xmlAttribute: attributeList) {
@@ -67,13 +69,24 @@ public class XMLUtil {
 		
 		public void characters (char ch[], int start, int length) {
 			String chars = new String(ch);
-			content.append(chars.substring(start, start + length));
+			contentBuffer.append(chars.substring(start, start + length));
+			content = contentBuffer.toString();
 		}
 		
 		@Override
 		public String toString() {
 //			return String.format("{%s %s %s}", uri, localName, attributeList);
-			return String.format("{%s \"%s\" %s}", path, content.toString(), attributeMap);
+			return String.format("{%s \"%s\" %s}", path, content, attributeMap);
+		}
+		
+		public String getAttributeValue(String attributeName) {
+			if (attributeMap.containsKey(attributeName)) {
+				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
+				return xmlAttribute.value;
+			} else {
+				logger.error("Unpexpected attributeName {}!", attributeName);
+				throw new UnexpectedException("Unpexpected attributeName");
+			}
 		}
 	}
 	
