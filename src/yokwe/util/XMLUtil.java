@@ -80,7 +80,7 @@ public class XMLUtil {
 			return String.format("{%s \"%s\" %s}", path, content, attributeMap);
 		}
 		
-		public String getAttributeValue(String attributeName) {
+		public String getAttribute(String attributeName) {
 			if (attributeMap.containsKey(attributeName)) {
 				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
 				return xmlAttribute.value;
@@ -89,7 +89,7 @@ public class XMLUtil {
 				throw new UnexpectedException("Unpexpected attributeName");
 			}
 		}
-		public String getAttributeValueOrNull(String attributeName) {
+		public String getAttributeOrNull(String attributeName) {
 			if (attributeMap.containsKey(attributeName)) {
 				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
 				return xmlAttribute.value;
