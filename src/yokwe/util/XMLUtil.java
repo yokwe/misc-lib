@@ -1,6 +1,7 @@
 package yokwe.util;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -230,5 +231,10 @@ public class XMLUtil {
 			logger.error("{} {}", exceptionName, e);
 			throw new UnexpectedException(exceptionName, e);
 		}
+	}
+
+	public static Stream<XMLElement> buildStream(byte[] data) {
+		ByteArrayInputStream bais = new ByteArrayInputStream(data);
+		return buildStream(bais);
 	}
 }
