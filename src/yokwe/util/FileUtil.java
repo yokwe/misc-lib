@@ -1,8 +1,10 @@
 package yokwe.util;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -62,6 +64,35 @@ public class FileUtil {
 		}
 	}
 	
+	public static RawRead rawRead() {
+		return new RawRead();
+	}
+	public static class RawRead {
+		private RawRead() {
+		}
+		
+		public byte[] file(File file) {			
+			byte[] buffer = new byte[65536];
+			try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file), buffer.length)) {
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				for(;;) {
+					int len = bis.read(buffer);
+					if (len == -1) break;
+					
+					baos.write(buffer, 0, len);
+				}
+				return baos.toByteArray();
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		public byte[] file(String path) {
+			return file(new File(path));
+		}
+	}
+	
 	public static Write write() {
 		return new Write();
 	}
@@ -97,7 +128,14 @@ public class FileUtil {
 		public void file(String path, String content) {
 			file (new File(path), content);
 		}
-		
+	}
+	
+	public static RawWrite rawWrite() {
+		return new RawWrite();
+	}
+	public static class RawWrite {
+		private RawWrite() {
+		}
 		public void file(File file, byte[] content) {
 			char[] buffer = new char[65536];
 			
