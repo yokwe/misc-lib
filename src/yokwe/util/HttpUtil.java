@@ -97,7 +97,7 @@ public class HttpUtil {
 				if (result != null) {
 					FileUtil.write().file(this.path, result);
 				} else {
-					FileUtil.write().file(this.path, rawData);
+					FileUtil.rawWrite().file(this.path, rawData);
 				}
 			} else {
 				this.path = null;
