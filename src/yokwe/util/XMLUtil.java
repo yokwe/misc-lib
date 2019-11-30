@@ -39,7 +39,7 @@ public class XMLUtil {
 		public final String localName;
 		public final String qName;
 		
-		public final Map<String, XMLAttribute> attributeMap;
+		public final List<XMLAttribute> attributeList;
 		
 		private final StringBuilder contentBuffer;
 		public        String        content;
@@ -51,24 +51,10 @@ public class XMLUtil {
 			this.uri           = uri;
 			this.localName     = localName;
 			this.qName         = qName;
-			this.attributeMap  = new TreeMap<>();
+			this.attributeList = XMLAttribute.getInstance(attributes);
 			this.contentBuffer = new StringBuilder();
 			this.content       = "";
 			this.prefixMap     = prefixMap;
-			
-			List<XMLAttribute> attributeList = XMLAttribute.getInstance(attributes);
-			for(XMLAttribute xmlAttribute: attributeList) {
-				String name = xmlAttribute.qName;
-				
-				if (attributeMap.containsKey(name)) {
-					logger.error("duplicate name {}", name);
-					logger.error("old {}", attributeMap.get(name));
-					logger.error("new {}", xmlAttribute);
-					throw new UnexpectedException("duplicate name");
-				} else {
-					attributeMap.put(name, xmlAttribute);
-				}
-			}
 		}
 		
 		public void characters (char ch[], int start, int length) {
@@ -80,25 +66,25 @@ public class XMLUtil {
 		@Override
 		public String toString() {
 //			return String.format("{%s %s %s}", uri, localName, attributeList);
-			return String.format("{%s \"%s\" %s}", path, content, attributeMap);
+			return String.format("{%s \"%s\" %s}", path, content, attributeList);
 		}
 		
-		public String getAttribute(String attributeName) {
-			if (attributeMap.containsKey(attributeName)) {
-				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
-				return xmlAttribute.value;
-			} else {
-				logger.error("Unpexpected attributeName {}!", attributeName);
-				throw new UnexpectedException("Unpexpected attributeName");
+		public String getAttribute(String uri, String name) {
+			for(XMLAttribute e: attributeList) {
+				if (e.uri.equals(uri) && e.localName.equals(name)) {
+					return e.value;
+				}
 			}
+			logger.error("Unpexpected uri name {} {}", uri, name);
+			throw new UnexpectedException("Unpexpected uri name");
 		}
-		public String getAttributeOrNull(String attributeName) {
-			if (attributeMap.containsKey(attributeName)) {
-				XMLAttribute xmlAttribute = attributeMap.get(attributeName);
-				return xmlAttribute.value;
-			} else {
-				return null;
+		public String getAttributeOrNull(String uri, String name) {
+			for(XMLAttribute e: attributeList) {
+				if (e.uri.equals(uri) && e.localName.equals(name)) {
+					return e.value;
+				}
 			}
+			return null;
 		}
 	}
 	
