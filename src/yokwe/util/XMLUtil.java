@@ -30,8 +30,8 @@ public class XMLUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(XMLUtil.class);
 	
 	public static class XMLElement {
-		public static XMLElement getInstance(String path, String uri, String localName, String qName, Attributes attributes) {
-			return new XMLElement(path, uri, localName, qName, attributes);
+		public static XMLElement getInstance(String path, String uri, String localName, String qName, Attributes attributes, Map<String, String> prefixMap) {
+			return new XMLElement(path, uri, localName, qName, attributes, prefixMap);
 		}
 		
 		public final String path;
@@ -44,7 +44,9 @@ public class XMLUtil {
 		private final StringBuilder contentBuffer;
 		public        String        content;
 		
-		private XMLElement(String path, String uri, String localName, String qName, Attributes attributes) {
+		public        Map<String, String> prefixMap;
+		
+		private XMLElement(String path, String uri, String localName, String qName, Attributes attributes, Map<String, String> prefixMap) {
 			this.path          = path;
 			this.uri           = uri;
 			this.localName     = localName;
@@ -52,6 +54,7 @@ public class XMLUtil {
 			this.attributeMap  = new TreeMap<>();
 			this.contentBuffer = new StringBuilder();
 			this.content       = "";
+			this.prefixMap     = prefixMap;
 			
 			List<XMLAttribute> attributeList = XMLAttribute.getInstance(attributes);
 			for(XMLAttribute xmlAttribute: attributeList) {
@@ -141,11 +144,26 @@ public class XMLUtil {
 		final Stream.Builder<XMLElement> builder;
 		final Stack<XMLElement>          xmlElementStack;
 		final Stack<String>              nameStack;
+		      Map<String, String>        prefixMap;
 		
 		SAXHandler(Stream.Builder<XMLElement> builder) {
 			this.builder         = builder;
 			this.xmlElementStack = new Stack<>();
 			this.nameStack       = new Stack<>();
+			this.prefixMap       = new TreeMap<>();
+		}
+		
+		@Override
+	    public void startPrefixMapping (String prefix, String uri) {
+			// Change instance of prefixMap
+			prefixMap = new TreeMap<>(prefixMap);
+			prefixMap.put(prefix, uri);
+		}
+		@Override
+	    public void endPrefixMapping (String prefix) {
+			// Change instance of prefixMap
+			prefixMap = new TreeMap<>(prefixMap);
+			prefixMap.remove(prefix);
 		}
 		
 		@Override
@@ -153,7 +171,7 @@ public class XMLUtil {
 			nameStack.push(qName);
 			
 			String path = String.join("/", nameStack);
-			XMLElement xmlElement = XMLElement.getInstance(path, uri, localName, qName, attributes);
+			XMLElement xmlElement = XMLElement.getInstance(path, uri, localName, qName, attributes, prefixMap);
 			
 			xmlElementStack.push(xmlElement);
 		}
@@ -162,7 +180,6 @@ public class XMLUtil {
 			XMLElement xmlElement = xmlElementStack.pop();
 			nameStack.pop();
 			
-//			logger.info("{}", xmlElement);
 			builder.accept(xmlElement);
 		}
 		@Override
