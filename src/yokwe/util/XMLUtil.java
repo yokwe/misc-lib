@@ -29,15 +29,72 @@ import yokwe.UnexpectedException;
 public class XMLUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(XMLUtil.class);
 	
+	public static class QValue implements Comparable<QValue> {
+		public final String namespace;
+		public final String value;
+		
+		public QValue(String uri, String value) {
+			this.namespace = uri;
+			this.value     = value;
+		}
+		public QValue(XMLElement xmlElement) {
+			this.namespace = xmlElement.name.namespace;
+			this.value     = xmlElement.name.value;
+		}
+		public QValue(XMLElement xmlElement, String qValue) {
+			String[] names = qValue.split(":");
+			if (names.length == 2) {
+				String prefix = names[0];
+				this.value = names[1];
+				if (xmlElement.prefixMap.containsKey(prefix)) {
+					this.namespace = xmlElement.prefixMap.get(prefix);
+				} else {
+					logger.error("Unexpected prefix {}", qValue);
+					throw new UnexpectedException("Unexpected qName");
+				}
+			} else {
+				logger.error("Unexpected name {}", qValue);
+				throw new UnexpectedException("Unexpected qName");
+			}
+		}
+		public QValue(XMLAttribute xmlAttribute) {
+			this.namespace = xmlAttribute.name.namespace;
+			this.value     = xmlAttribute.name.value;
+		}
+		
+		@Override
+		public String toString() {
+			return String.format("{%s %s}", namespace, value);
+		}
+		
+		@Override
+		public boolean equals(Object o) {
+			if (o == null) {
+				return false;
+			} else {
+				if (o instanceof QValue) {
+					QValue that = (QValue)o;
+					return this.namespace.equals(that.namespace) && this.value.equals(that.value);
+				} else {
+					return false;
+				}
+			}
+		}
+		@Override
+		public int compareTo(QValue that) {
+			int ret = this.namespace.compareTo(that.namespace);
+			if (ret == 0) ret = this.value.compareTo(that.value);
+			return ret;
+		}
+	}
+	
 	public static class XMLElement {
-		public static XMLElement getInstance(String path, String uri, String localName, String qName, Attributes attributes, Map<String, String> prefixMap) {
-			return new XMLElement(path, uri, localName, qName, attributes, prefixMap);
+		public static XMLElement getInstance(String path, QValue name, Attributes attributes, Map<String, String> prefixMap) {
+			return new XMLElement(path, name, attributes, prefixMap);
 		}
 		
 		public final String path;
-		public final String uri;
-		public final String localName;
-		public final String qName;
+		public final QValue name;
 		
 		public final List<XMLAttribute> attributeList;
 		
@@ -46,11 +103,9 @@ public class XMLUtil {
 		
 		public        Map<String, String> prefixMap;
 		
-		private XMLElement(String path, String uri, String localName, String qName, Attributes attributes, Map<String, String> prefixMap) {
+		private XMLElement(String path, QValue name, Attributes attributes, Map<String, String> prefixMap) {
 			this.path          = path;
-			this.uri           = uri;
-			this.localName     = localName;
-			this.qName         = qName;
+			this.name          = name;
 			this.attributeList = XMLAttribute.getInstance(attributes);
 			this.contentBuffer = new StringBuilder();
 			this.content       = "";
@@ -69,22 +124,24 @@ public class XMLUtil {
 			return String.format("{%s \"%s\" %s}", path, content, attributeList);
 		}
 		
-		public String getAttribute(String uri, String name) {
+		public String getAttribute(QValue qValue) {
 			for(XMLAttribute e: attributeList) {
-				if (e.uri.equals(uri) && e.localName.equals(name)) {
-					return e.value;
-				}
+				if (e.name.equals(qValue)) return e.value;
 			}
-			logger.error("Unpexpected uri name {} {}", uri, name);
-			throw new UnexpectedException("Unpexpected uri name");
+			logger.error("Unexpected qValue {}", qValue);
+			throw new UnexpectedException("Unexpected qValue");
 		}
-		public String getAttributeOrNull(String uri, String name) {
+		public String getAttributeOrNull(QValue qValue) {
 			for(XMLAttribute e: attributeList) {
-				if (e.uri.equals(uri) && e.localName.equals(name)) {
-					return e.value;
-				}
+				if (e.name.equals(qValue)) return e.value;
 			}
 			return null;
+		}
+		public String getAttribute(String value) {
+			return getAttribute(new QValue("", value));
+		}
+		public String getAttributeOrNull(String value) {
+			return getAttributeOrNull(new QValue("", value));
 		}
 	}
 	
@@ -94,29 +151,23 @@ public class XMLUtil {
 			
 			List<XMLAttribute> ret = new ArrayList<>(length);
 			for(int i = 0; i < length; i++) {
-				String localName = attributes.getLocalName(i);
-				String qName     = attributes.getQName(i);
+				QValue name      = new QValue(attributes.getURI(i), attributes.getLocalName(i));
 				String type      = attributes.getType(i);
-				String uri       = attributes.getURI(i);
 				String value     = attributes.getValue(i);
-				XMLAttribute xmlAttribute = new XMLAttribute(localName, qName, type, uri, value);
+				XMLAttribute xmlAttribute = new XMLAttribute(name, type, value);
 				
 				ret.add(xmlAttribute);
 			}
 			return ret;
 		}
-		public final String localName;
-		public final String qName;
+		public final QValue name;
 		public final String type;
-		public final String uri;
 		public final String value;
 		
-		private XMLAttribute(String localName, String qName, String type, String uri, String value) {
-			this.localName = localName;
-			this.qName     = qName;
-			this.type      = type;
-			this.uri       = uri;
-			this.value     = value;
+		private XMLAttribute(QValue name, String type, String value) {
+			this.name  = name;
+			this.type  = type;
+			this.value = value;
 		}
 		
 		@Override
@@ -157,7 +208,8 @@ public class XMLUtil {
 			nameStack.push(qName);
 			
 			String path = String.join("/", nameStack);
-			XMLElement xmlElement = XMLElement.getInstance(path, uri, localName, qName, attributes, prefixMap);
+			QValue name = new QValue(uri, localName);
+			XMLElement xmlElement = XMLElement.getInstance(path, name, attributes, prefixMap);
 			
 			xmlElementStack.push(xmlElement);
 		}
