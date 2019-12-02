@@ -77,20 +77,24 @@ public class StringUtil {
 		return ret;
 	}
 	
+	private enum CharKind {
+		LOWER,
+		UPPER,
+		DIGIT,
+		UNKNOWN
+	}
 	public static String toJavaConstName(String name) {
 		StringBuilder ret = new StringBuilder();
-		boolean lastCharIsUpper = false;
+		CharKind lastCharKind = CharKind.UNKNOWN;
+		
 		for(int i = 0; i < name.length(); i++) {
 			char c = name.charAt(i);
 
 			if (Character.isLowerCase(c)) {
 				ret.append(Character.toUpperCase(c));
-				lastCharIsUpper = false;
+				lastCharKind = CharKind.LOWER;
 			} else if (Character.isDigit(c)) {
-				ret.append(c);
-				lastCharIsUpper = false;
-			} else if (Character.isUpperCase(c)) {
-				if (lastCharIsUpper) {
+				if (lastCharKind == CharKind.DIGIT) {
 					ret.append(c);
 				} else {
 					if (ret.length() == 0) {
@@ -99,7 +103,18 @@ public class StringUtil {
 						ret.append('_').append(c);
 					}
 				}
-				lastCharIsUpper = true;
+				lastCharKind = CharKind.DIGIT;
+			} else if (Character.isUpperCase(c)) {
+				if (lastCharKind == CharKind.UPPER) {
+					ret.append(c);
+				} else {
+					if (ret.length() == 0) {
+						ret.append(c);
+					} else {
+						ret.append('_').append(c);
+					}
+				}
+				lastCharKind = CharKind.UPPER;
 			} else {
 				throw new UnexpectedException(String.format("Unknown character type = %c - %04X", c, (int)c));
 			}
