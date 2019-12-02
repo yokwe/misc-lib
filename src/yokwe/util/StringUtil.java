@@ -6,6 +6,8 @@ import java.util.stream.Stream;
 
 import org.slf4j.LoggerFactory;
 
+import yokwe.UnexpectedException;
+
 public class StringUtil {
 	static final org.slf4j.Logger logger = LoggerFactory.getLogger(StringUtil.class);
 
@@ -74,4 +76,35 @@ public class StringUtil {
 		
 		return ret;
 	}
+	
+	public static String toJavaConstName(String name) {
+		StringBuilder ret = new StringBuilder();
+		boolean lastCharIsUpper = false;
+		for(int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+
+			if (Character.isLowerCase(c)) {
+				ret.append(Character.toUpperCase(c));
+				lastCharIsUpper = false;
+			} else if (Character.isDigit(c)) {
+				ret.append(c);
+				lastCharIsUpper = false;
+			} else if (Character.isUpperCase(c)) {
+				if (lastCharIsUpper) {
+					ret.append(c);
+				} else {
+					if (ret.length() == 0) {
+						ret.append(c);
+					} else {
+						ret.append('_').append(c);
+					}
+				}
+				lastCharIsUpper = true;
+			} else {
+				throw new UnexpectedException(String.format("Unknown character type = %c - %04X", c, (int)c));
+			}
+		}
+		return ret.toString();
+	}
+
 }
