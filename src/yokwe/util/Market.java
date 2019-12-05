@@ -43,27 +43,25 @@ public class Market {
 		}
 	}
 	
-	private static final LocalDate lastTradingDate;
-	
-	static {
-		LocalDateTime today = LocalDateTime.now(ZONE_ID);
-		if (today.getHour() < HOUR_CLOSE_MARKET) today = today.minusDays(1); // Move to yesterday if it is before market close
-		
-		
-		for(;;) {
-			if (isClosed(today)) {
-				today = today.minusDays(1);
-				continue;
-			}
-
-			break;
-		}
-		
-		lastTradingDate  = today.toLocalDate();
-		logger.info("Last Trading Date {}", lastTradingDate);
-	}
+	private static LocalDate lastTradingDate = null;
 	
 	public static LocalDate getLastTradingDate() {
+		if (lastTradingDate == null) {
+			LocalDateTime today = LocalDateTime.now(ZONE_ID);
+			if (today.getHour() < HOUR_CLOSE_MARKET) today = today.minusDays(1); // Move to yesterday if it is before market close
+			
+			for(;;) {
+				if (isClosed(today)) {
+					today = today.minusDays(1);
+					continue;
+				}
+
+				break;
+			}
+			
+			lastTradingDate  = today.toLocalDate();
+			logger.info("Last Trading Date {}", lastTradingDate);
+		}
 		return lastTradingDate;
 	}
 	
