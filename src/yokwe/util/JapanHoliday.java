@@ -2,6 +2,7 @@ package yokwe.util;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
@@ -181,6 +182,9 @@ public class JapanHoliday {
 		marketHolidaySet.add("1231");
 	}
 	
+	public static final boolean isClosed(LocalDateTime dateTime) {
+		return isClosed(dateTime.toLocalDate());
+	}
 	public static final boolean isClosed(LocalDate date) {
 		// Check day of week
 		DayOfWeek dayOfWeek = date.getDayOfWeek();
@@ -200,13 +204,15 @@ public class JapanHoliday {
 		return isClosed(LocalDate.parse(date));
 	}
 	
-	public static final ZoneId ZONE_ID = ZoneId.of("Asia/Tokyo");
+	public static final ZoneId ZONE_ID           = ZoneId.of("Asia/Tokyo");
+	public static final int    HOUR_CLOSE_MARKET = 15; // market close at 1500
 
 	private static LocalDate lastTradingDate = null;
 	public static LocalDate getLastTradingDate() {
 		if (lastTradingDate == null) {
-			LocalDate today = LocalDate.now(ZONE_ID);
-			
+			LocalDateTime today = LocalDateTime.now(ZONE_ID);
+			if (today.getHour() < HOUR_CLOSE_MARKET) today = today.minusDays(1); // Move to yesterday if it is before market close
+
 			for(;;) {
 				if (isClosed(today)) {
 					today = today.minusDays(1);
@@ -216,7 +222,7 @@ public class JapanHoliday {
 				break;
 			}
 			
-			lastTradingDate = today;
+			lastTradingDate = today.toLocalDate();
 			logger.info("Last Trading Date {}", lastTradingDate);
 		}
 		return lastTradingDate;
