@@ -115,8 +115,12 @@ public class StringUtil {
 					}
 				}
 				lastCharKind = CharKind.UPPER;
+			} else if (c == '-') {
+				ret.append('_');
 			} else {
-				throw new UnexpectedException(String.format("Unknown character type = %c - %04X", c, (int)c));
+				logger.error("{}", String.format("Unknown character type = %c - %04X", c, (int)c));
+				logger.error("  name {}", name);
+				throw new UnexpectedException("Unknown character");
 			}
 		}
 		return ret.toString();
