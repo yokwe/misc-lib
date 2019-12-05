@@ -2,11 +2,14 @@ package yokwe.util;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -169,25 +172,54 @@ public class JapanHoliday {
 		return isPublicHoliday(LocalDate.parse(date));
 	}
 	
+	private static Set<String> marketHolidaySet = new TreeSet<>();
+	static {
+		marketHolidaySet.add("0101");
+		marketHolidaySet.add("0102");
+		marketHolidaySet.add("0103");
+		marketHolidaySet.add("1230");
+		marketHolidaySet.add("1231");
+	}
+	
 	public static final boolean isClosed(LocalDate date) {
+		// Check day of week
 		DayOfWeek dayOfWeek = date.getDayOfWeek();
-		if (dayOfWeek == DayOfWeek.SUNDAY)   return true;
 		if (dayOfWeek == DayOfWeek.SATURDAY) return true;
+		if (dayOfWeek == DayOfWeek.SUNDAY)   return true;
 		
-		int ddmm = date.getMonthValue() * 100 + date.getDayOfMonth();
-		switch(ddmm) {
-		case 101:
-		case 102:
-		case 103:
-		case 1230:
-		case 1231:
-			return true;
-		}
-
-		return isPublicHoliday(date);
+		// Check public holiday
+		if (isPublicHoliday(date)) return true;
+		
+		// Check market holiday
+		int mm = date.getMonthValue();
+		int dd = date.getDayOfMonth();
+		String key = String.format("%02d%02d", mm, dd);
+		return marketHolidaySet.contains(key);
 	}
 	public static final boolean isClosed(String date) {
 		return isClosed(LocalDate.parse(date));
+	}
+	
+	public static final ZoneId ZONE_ID = ZoneId.of("Asia/Tokyo");
+
+	private static LocalDate lastTradingDate = null;
+	public static LocalDate getLastTradingDate() {
+		if (lastTradingDate == null) {
+			LocalDate today = LocalDate.now(ZONE_ID);
+			
+			for(;;) {
+				if (isClosed(today)) {
+					today = today.minusDays(1);
+					continue;
+				}
+
+				break;
+			}
+			
+			lastTradingDate = today;
+			logger.info("Last Trading Date {}", lastTradingDate);
+		}
+		return lastTradingDate;
 	}
 
 	public static void main(String[] args) {
