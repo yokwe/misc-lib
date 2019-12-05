@@ -38,7 +38,7 @@ public class HashCode {
 	
 	public static byte[] getHashCode(File file, String algorithm) {
 		try (FileInputStream fis = new FileInputStream(file)) {
-			return getHashCodeString(fis, algorithm);
+			return getHashCode(fis, algorithm);
 		} catch (IOException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.error("{} {}", exceptionName, e);
@@ -49,7 +49,7 @@ public class HashCode {
 		return getHashCode(data, DEFAULT_ALGORITHM);
 	}
 	
-	public static byte[] getHashCodeString(InputStream is, String algorithm) {
+	public static byte[] getHashCode(InputStream is, String algorithm) {
 		try {
 			MessageDigest md = getMessageDigest(algorithm);
 			
