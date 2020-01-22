@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import yokwe.UnexpectedException;
 
-public class XMLUtil {
+public final class XMLUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(XMLUtil.class);
 	
 	public static class QValue implements Comparable<QValue> {
@@ -291,5 +292,9 @@ public class XMLUtil {
 	public static Stream<XMLElement> buildStream(byte[] data) {
 		ByteArrayInputStream bais = new ByteArrayInputStream(data);
 		return buildStream(bais);
+	}
+
+	public static Stream<XMLElement> buildStream(String string) {
+		return buildStream(StandardCharsets.UTF_8.encode(string).array());
 	}
 }
