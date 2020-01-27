@@ -42,22 +42,6 @@ public final class XMLUtil {
 			this.namespace = xmlElement.name.namespace;
 			this.value     = xmlElement.name.value;
 		}
-		public QValue(XMLElement xmlElement, String qValue) {
-			String[] names = qValue.split(":");
-			if (names.length == 2) {
-				String prefix = names[0];
-				this.value = names[1];
-				if (xmlElement.prefixMap.containsKey(prefix)) {
-					this.namespace = xmlElement.prefixMap.get(prefix);
-				} else {
-					logger.error("Unexpected prefix {}", qValue);
-					throw new UnexpectedException("Unexpected qName");
-				}
-			} else {
-				logger.error("Unexpected name {}", qValue);
-				throw new UnexpectedException("Unexpected qName");
-			}
-		}
 		public QValue(XMLAttribute xmlAttribute) {
 			this.namespace = xmlAttribute.name.namespace;
 			this.value     = xmlAttribute.name.value;
