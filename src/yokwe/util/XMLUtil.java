@@ -144,6 +144,32 @@ public final class XMLUtil {
 		public String getAttributeOrNull(String value) {
 			return getAttributeOrNull(new QValue("", value));
 		}
+		
+		public QValue expandNamespacePrefix(String value) {
+			String[] names = value.split(":");
+			if (names.length != 2) {
+				logger.error("Unexpected value format {}", value);
+				throw new UnexpectedException("Unexpected value format");
+			}
+			String prefix = names[0];
+			String name   = names[1];
+			if (prefixMap.containsKey(prefix)) {
+				return new QValue(prefixMap.get(prefix), name);
+			} else {
+				logger.error("Unexpected prefix {}", prefix);
+				logger.error("  prefixMap {}", prefixMap);
+				throw new UnexpectedException("Unexpected prefix");
+			}
+		}
+		public boolean canExpandNamespacePrefix(String value) {
+			String[] names = value.split(":");
+			if (names.length != 2) {
+				logger.error("Unexpected value format {}", value);
+				throw new UnexpectedException("Unexpected value format");
+			}
+			String prefix = names[0];
+			return prefixMap.containsKey(prefix);
+		}
 	}
 	
 	public static class XMLAttribute {
