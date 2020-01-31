@@ -183,8 +183,8 @@ public final class XMLUtil {
 		
 		@Override
 		public String toString() {
-//			return String.format("{%s = \"%s\"}", qName, value);
-			return String.format("\"%s\"", value);
+			return String.format("{%s = \"%s\"}", name, value);
+//			return String.format("\"%s\"", value);
 		}
 	}
 	
