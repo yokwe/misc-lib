@@ -99,7 +99,10 @@ public final class XMLUtil {
 		
 		public void characters (char ch[], int start, int length) {
 			String chars = new String(ch);
-			contentBuffer.append(chars.substring(start, start + length));
+			characters(chars.substring(start, start + length));
+		}
+		public void characters(String string) {
+			contentBuffer.append(string);
 			content = contentBuffer.toString();
 		}
 		
@@ -228,6 +231,14 @@ public final class XMLUtil {
 		public void endElement (String uri, String localName, String qName) {
 			XMLElement xmlElement = xmlElementStack.pop();
 			nameStack.pop();
+			
+			// Append child content to parent
+			if (!xmlElement.content.isEmpty()) {
+				if (!xmlElementStack.isEmpty()) {
+					XMLElement parent = xmlElementStack.peek();
+					parent.characters(xmlElement.content);
+				}
+			}
 			
 			builder.accept(xmlElement);
 		}
