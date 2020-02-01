@@ -11,6 +11,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,5 +159,27 @@ public class FileUtil {
 		public void file(String path, byte[] content) {
 			file (new File(path), content);
 		}
+	}
+	
+	public static List<File> listFile(File dir) {
+		List<File> ret = new ArrayList<>();
+		
+		if (dir.isDirectory()) {
+			for(File file: dir.listFiles()) {
+				final String name = file.getName();
+				// Skip special files -- assume we run on Unix
+				if (name.equals("."))  continue;
+				if (name.equals("..")) continue;
+
+				if (file.isDirectory()) {
+					ret.addAll(listFile(file));
+				}
+				if (file.isFile()) {
+					ret.add(file);
+				}
+			}
+		}
+		
+		return ret;
 	}
 }
