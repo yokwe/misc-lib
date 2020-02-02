@@ -16,6 +16,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -368,28 +369,38 @@ public class CSVUtil {
 					String value = values[i];
 
 					switch(fieldInfo.clazzName) {
+					case "java.math.BigDecimal":
+					{
+						BigDecimal bigDecimalValue = new BigDecimal(value);
+						fieldInfo.field.set(data, bigDecimalValue);
+					}
+						break;
 					case "int":
+					case "java.lang.Integer":
 					{
 						int intValue = value.isEmpty() ? 0 : Integer.parseInt(value);
-						fieldInfo.field.setInt(data, intValue);
+						fieldInfo.field.set(data, intValue);
 					}
 						break;
 					case "long":
+					case "java.lang.Long":
 					{
 						long longValue = value.isEmpty() ? 0 : Long.parseLong(value);
-						fieldInfo.field.setLong(data, longValue);
+						fieldInfo.field.set(data, longValue);
 					}
 						break;
 					case "double":
+					case "java.lang.Double":
 					{
 						double doubleValue = value.isEmpty() ? 0 : Double.parseDouble(value);
-						fieldInfo.field.setDouble(data, doubleValue);
+						fieldInfo.field.set(data, doubleValue);
 					}
 						break;
 					case "boolean":
+					case "java.lang.Boolean":
 					{
 						boolean booleanValue = value.isEmpty() ? false : Boolean.parseBoolean(value);
-						fieldInfo.field.setBoolean(data, booleanValue);
+						fieldInfo.field.set(data, booleanValue);
 					}
 						break;
 					case "java.lang.String":
