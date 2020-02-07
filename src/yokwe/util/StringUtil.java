@@ -97,6 +97,25 @@ public class StringUtil {
 			char c = name.charAt(i);
 
 			if (Character.isLowerCase(c)) {
+				// If this is first lower character after upper character, need special handling.
+				// abcREITProfit => ABC_REIT_PROFIT
+				if (lastCharKind == CharKind.UPPER) {
+					int length = ret.length();
+					if (2 <= length) {
+						String c1 = ret.substring(0, length - 2);
+						String c2 = ret.substring(length - 2, length - 1);
+						String c3 = ret.substring(length - 1, length);
+						if (c2.equals("_")) {
+							//
+						} else {
+							ret.setLength(0);
+							ret.append(c1);
+							ret.append(c2);
+							ret.append("_");
+							ret.append(c3);
+						}
+					}
+				}
 				ret.append(Character.toUpperCase(c));
 				lastCharKind = CharKind.LOWER;
 			} else if (Character.isDigit(c)) {
