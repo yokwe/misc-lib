@@ -13,6 +13,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,4 +186,22 @@ public class FileUtil {
 		
 		return ret;
 	}
+	public static List<File> listFile(String dirPath) {
+		return listFile(new File(dirPath));
+	}
+	
+	public static Map<File, String> md5FileMap(List<File> list) {
+		Map<File, String> ret = new TreeMap<>();
+		for(File file: list) {
+			String md5 = StringUtil.toHexString(HashCode.getHashCode(file));
+			ret.put(file, md5);
+		}
+		return ret;
+	}
+	public static Set<String> md5Set(List<File> list) {
+		Map<File, String> map = md5FileMap(list);
+		Set<String> ret = new TreeSet<>(map.values());
+		return ret;
+	}
+
 }
