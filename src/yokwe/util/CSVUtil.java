@@ -371,6 +371,9 @@ public class CSVUtil {
 					switch(fieldInfo.clazzName) {
 					case "java.math.BigDecimal":
 					{
+						if (value.contains(",")) {
+							value = value.replace(",", "");
+						}
 						BigDecimal bigDecimalValue = new BigDecimal(value);
 						fieldInfo.field.set(data, bigDecimalValue);
 					}
@@ -378,6 +381,9 @@ public class CSVUtil {
 					case "int":
 					case "java.lang.Integer":
 					{
+						if (value.contains(",")) {
+							value = value.replace(",", "");
+						}
 						int intValue = value.isEmpty() ? 0 : Integer.parseInt(value);
 						fieldInfo.field.set(data, intValue);
 					}
@@ -385,6 +391,9 @@ public class CSVUtil {
 					case "long":
 					case "java.lang.Long":
 					{
+						if (value.contains(",")) {
+							value = value.replace(",", "");
+						}
 						long longValue = value.isEmpty() ? 0 : Long.parseLong(value);
 						fieldInfo.field.set(data, longValue);
 					}
@@ -392,6 +401,9 @@ public class CSVUtil {
 					case "double":
 					case "java.lang.Double":
 					{
+						if (value.contains(",")) {
+							value = value.replace(",", "");
+						}
 						double doubleValue = value.isEmpty() ? 0 : Double.parseDouble(value);
 						fieldInfo.field.set(data, doubleValue);
 					}
