@@ -178,7 +178,6 @@ public class JapanHoliday {
 		marketHolidaySet.add("0101");
 		marketHolidaySet.add("0102");
 		marketHolidaySet.add("0103");
-		marketHolidaySet.add("1230");
 		marketHolidaySet.add("1231");
 	}
 	
