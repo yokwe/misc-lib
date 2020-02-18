@@ -40,6 +40,12 @@ public class CSVUtil {
 		String value();
 	}
 
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public static @interface DecimalPlaces {
+		int value();
+	}
+
 	public static final int BUFFER_SIZE = 64 * 1024;
 	public static final LocalDate     NULL_LOCAL_DATE      = LocalDate.of(1900, 1, 1);
 	public static final LocalTime     NULL_LOCAL_TIME      = LocalTime.of(0, 0, 0);
@@ -85,6 +91,7 @@ public class CSVUtil {
 		final String   name;
 		final Class<?> clazz;
 		final String   clazzName;
+		final int      decimalDigits;
 		
 		final Map<String, Enum<?>> enumMap;
 
@@ -97,6 +104,28 @@ public class CSVUtil {
 
 			clazz      = field.getType();
 			clazzName  = clazz.getName();
+			
+			DecimalPlaces decimalPlaces = field.getDeclaredAnnotation(DecimalPlaces.class);
+			if (decimalPlaces == null) {
+				decimalDigits = 0;
+			} else {
+				switch(clazzName) {
+				case "double":
+				case "real":
+					decimalDigits = decimalPlaces.value();
+					if (decimalDigits <= 0) {
+						logger.error("Unexpected decimalDigits value");
+						logger.error("  decimalDigits {}", decimalDigits);
+						logger.error("  field         {}", field.toString());
+						throw new UnexpectedException("Unexpected decimalDigits value");
+					}
+					break;
+				default:
+					logger.error("Unexpected field type for DecimalPlaces annotation");
+					logger.error("  field  !{}!", field.toString());
+					throw new UnexpectedException("Unexpected field type for DecimalPlaces annotation");
+				}
+			}
 			
 			if (clazz.isEnum()) {
 				enumMap = new TreeMap<>();
@@ -569,9 +598,23 @@ public class CSVUtil {
 			
 			try {
 				writeField(bw, fieldInfos[0].field.get(value).toString());
-				for(int i = 1; i < fieldInfos.length; i++) {
-					bw.write(",");
-					writeField(bw, fieldInfos[i].field.get(value).toString());
+				for(int i = 0; i < fieldInfos.length; i++) {
+					if (1 <= i) bw.write(",");
+					
+					FieldInfo fieldInfo = fieldInfos[i];
+					switch (fieldInfo.clazzName) {
+					case "real":
+					case "double":
+					{
+						String format = String.format("%%.%df", fieldInfo.decimalDigits);
+						double doubleValue = fieldInfo.field.getDouble(value);
+						writeField(bw, String.format(format, doubleValue));
+					}
+						break;
+					default:
+						writeField(bw, fieldInfos[i].field.get(value).toString());
+						break;
+					}
 				}
 				bw.newLine();
 			} catch (IllegalArgumentException | IllegalAccessException | IOException e) {
@@ -616,61 +659,60 @@ public class CSVUtil {
 			file(new File(path), collection);
 		}
 		
-		
-		private BufferedWriter bwStart = null;
-		public void start(String path) {
-			start(new File(path));
-		}
-		public void start(File file) {
-			// Create parent folder if not exists
-			{
-				File parent = file.getParentFile();
-				if (!parent.exists()) {
-					parent.mkdirs();
-				}
-			}
-			
-			try {
-				start(new FileWriter(file));
-			} catch (IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
-			}
-		}
-		public void start(Writer writer) {
-			// Sanity check
-			if (bwStart != null) {
-				logger.error("bwStart != null");
-				throw new UnexpectedException("bwStart != null");
-			}
-			bwStart = new BufferedWriter(writer, BUFFER_SIZE);
-			if (context.withHeader) {
-				writeHeader(bwStart);
-			}
-		}
-		public void write(E e) {
-			// Sanity check
-			if (bwStart == null) {
-				logger.error("bwStart == null");
-				throw new UnexpectedException("bwStart == null");
-			}
-			write(bwStart, e);
-		}
-		public void stop() {
-			// Sanity check
-			if (bwStart == null) {
-				logger.error("bwStart == null");
-				throw new UnexpectedException("bwStart == null");
-			}
-			try {
-				bwStart.close();
-				bwStart = null;
-			} catch (IOException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
-			}
-		}
+//		private BufferedWriter bwStart = null;
+//		public void start(String path) {
+//			start(new File(path));
+//		}
+//		public void start(File file) {
+//			// Create parent folder if not exists
+//			{
+//				File parent = file.getParentFile();
+//				if (!parent.exists()) {
+//					parent.mkdirs();
+//				}
+//			}
+//			
+//			try {
+//				start(new FileWriter(file));
+//			} catch (IOException e) {
+//				String exceptionName = e.getClass().getSimpleName();
+//				logger.error("{} {}", exceptionName, e);
+//				throw new UnexpectedException(exceptionName, e);
+//			}
+//		}
+//		public void start(Writer writer) {
+//			// Sanity check
+//			if (bwStart != null) {
+//				logger.error("bwStart != null");
+//				throw new UnexpectedException("bwStart != null");
+//			}
+//			bwStart = new BufferedWriter(writer, BUFFER_SIZE);
+//			if (context.withHeader) {
+//				writeHeader(bwStart);
+//			}
+//		}
+//		public void write(E e) {
+//			// Sanity check
+//			if (bwStart == null) {
+//				logger.error("bwStart == null");
+//				throw new UnexpectedException("bwStart == null");
+//			}
+//			write(bwStart, e);
+//		}
+//		public void stop() {
+//			// Sanity check
+//			if (bwStart == null) {
+//				logger.error("bwStart == null");
+//				throw new UnexpectedException("bwStart == null");
+//			}
+//			try {
+//				bwStart.close();
+//				bwStart = null;
+//			} catch (IOException e) {
+//				String exceptionName = e.getClass().getSimpleName();
+//				logger.error("{} {}", exceptionName, e);
+//				throw new UnexpectedException(exceptionName, e);
+//			}
+//		}
 	}
 }
