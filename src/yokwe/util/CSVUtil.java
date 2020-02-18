@@ -91,7 +91,7 @@ public class CSVUtil {
 		final String   name;
 		final Class<?> clazz;
 		final String   clazzName;
-		final int      decimalDigits;
+		final String   format;
 		
 		final Map<String, Enum<?>> enumMap;
 
@@ -107,18 +107,19 @@ public class CSVUtil {
 			
 			DecimalPlaces decimalPlaces = field.getDeclaredAnnotation(DecimalPlaces.class);
 			if (decimalPlaces == null) {
-				decimalDigits = 0;
+				format = null;
 			} else {
 				switch(clazzName) {
 				case "double":
 				case "real":
-					decimalDigits = decimalPlaces.value();
-					if (decimalDigits <= 0) {
-						logger.error("Unexpected decimalDigits value");
-						logger.error("  decimalDigits {}", decimalDigits);
-						logger.error("  field         {}", field.toString());
-						throw new UnexpectedException("Unexpected decimalDigits value");
+					int digits = decimalPlaces.value();
+					if (digits <= 0) {
+						logger.error("Unexpected digits value");
+						logger.error("  digits {}", digits);
+						logger.error("  field  {}", field.toString());
+						throw new UnexpectedException("Unexpected digits value");
 					}
+					format = String.format("%%.%df", digits);
 					break;
 				default:
 					logger.error("Unexpected field type for DecimalPlaces annotation");
@@ -597,7 +598,6 @@ public class CSVUtil {
 			FieldInfo[] fieldInfos = classInfo.fieldInfos;
 			
 			try {
-				writeField(bw, fieldInfos[0].field.get(value).toString());
 				for(int i = 0; i < fieldInfos.length; i++) {
 					if (1 <= i) bw.write(",");
 					
@@ -606,13 +606,16 @@ public class CSVUtil {
 					case "real":
 					case "double":
 					{
-						String format = String.format("%%.%df", fieldInfo.decimalDigits);
-						double doubleValue = fieldInfo.field.getDouble(value);
-						writeField(bw, String.format(format, doubleValue));
+						if (fieldInfo.format != null) {
+							double doubleValue = fieldInfo.field.getDouble(value);
+							writeField(bw, String.format(fieldInfo.format, doubleValue));
+						} else {
+							writeField(bw, fieldInfo.field.get(value).toString());
+						}
 					}
 						break;
 					default:
-						writeField(bw, fieldInfos[i].field.get(value).toString());
+						writeField(bw, fieldInfo.field.get(value).toString());
 						break;
 					}
 				}
