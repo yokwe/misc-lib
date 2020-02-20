@@ -15,6 +15,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -94,6 +96,7 @@ public class CSVUtil {
 		final String   format;
 		
 		final Map<String, Enum<?>> enumMap;
+		final Method               getInstance;
 
 		
 		FieldInfo(Field value) {
@@ -139,6 +142,29 @@ public class CSVUtil {
 			} else {
 				enumMap = null;
 			}
+			
+			{
+				Method method = null;
+				try {
+					method = clazz.getDeclaredMethod("getInstance", String.class);
+					// Sanity check
+					int modifiers = method.getModifiers();
+					if (Modifier.isStatic(modifiers) && Modifier.isPublic(modifiers)) {
+						// accept this method
+					} else {
+						// reject this method
+						method = null;
+					}
+				} catch (NoSuchMethodException e) {
+					//
+				} catch (SecurityException e) {
+					String exceptionName = e.getClass().getSimpleName();
+					logger.error("{} {}", exceptionName, e);
+					throw new UnexpectedException(exceptionName, e);
+				}
+				this.getInstance = method;
+			}
+
 		}
 	}
 	
@@ -481,6 +507,15 @@ public class CSVUtil {
 							} else {
 								logger.error("Unknow enum value  {}  {}", fieldInfo.clazzName, value);
 								throw new UnexpectedException("Unknow enum value");
+							}
+						} else if (fieldInfo.getInstance != null) {
+							try {
+								Object o = fieldInfo.getInstance.invoke(null, value);
+								fieldInfo.field.set(data, o);
+							} catch (IllegalArgumentException | InvocationTargetException e) {
+								String exceptionName = e.getClass().getSimpleName();
+								logger.error("{} {}", exceptionName, e);
+								throw new UnexpectedException(exceptionName, e);
 							}
 						} else {
 							logger.error("Unexptected fieldInfo.clazzName {}", fieldInfo.clazzName);
