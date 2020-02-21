@@ -649,6 +649,13 @@ public class CSVUtil {
 						}
 					}
 						break;
+					case "java.math.BigDecimal":
+					{
+						// To avoid scientific expression of value, need to use toPlainString().
+						BigDecimal bigDecimalValue = (BigDecimal)fieldInfo.field.get(value);
+						writeField(bw, bigDecimalValue.toPlainString());
+					}
+						break;
 					default:
 						writeField(bw, fieldInfo.field.get(value).toString());
 						break;
