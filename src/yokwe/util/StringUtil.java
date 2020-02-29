@@ -1,5 +1,6 @@
 package yokwe.util;
 
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -66,6 +67,42 @@ public class StringUtil {
 		
 		return builder.build();
 	}
+	
+	//
+	// return matched group as array of string
+	//
+	public static String[] getGroup(Pattern pat, String string) {
+		Matcher m = pat.matcher(string);
+		if (m.find()) {
+			int count = m.groupCount();
+			String[] ret = new String[count];
+			for(int i = 0; i < count; i++) {
+				ret[i] = m.group(i + 1);
+			}
+			return ret;
+		} else {
+			return null;
+		}
+	}
+	
+	//
+	// expect just one group and return it
+	//
+	public static String getGroupOne(Pattern pat, String string) {
+		String[] result = getGroup(pat, string);
+		if (result == null) {
+			return null;
+		} else {
+			if (result.length == 1) {
+				return result[0];
+			} else {
+				logger.error("result.length != 1");
+				logger.error("  result {}", Arrays.asList(result));
+				throw new UnexpectedException("result.length != 1");
+			}
+		}
+	}
+
 	
 	//
 	// removeBOM
