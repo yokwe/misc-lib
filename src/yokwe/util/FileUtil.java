@@ -27,6 +27,8 @@ import yokwe.UnexpectedException;
 public class FileUtil {
 	private static final Logger logger = LoggerFactory.getLogger(FileUtil.class);
 
+	private static final int BUFFER_SIZE = 65536;
+	
 	private static final String  DEFAULT_CHARSET = "UTF-8";
 
 	private static class Context {
@@ -48,7 +50,7 @@ public class FileUtil {
 		}
 		
 		public String file(File file) {
-			char[] buffer = new char[65536];		
+			char[] buffer = new char[BUFFER_SIZE];		
 			try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), context.charset), buffer.length)) {
 				StringBuilder ret = new StringBuilder();
 				
@@ -78,7 +80,7 @@ public class FileUtil {
 		}
 		
 		public byte[] file(File file) {			
-			byte[] buffer = new byte[65536];
+			byte[] buffer = new byte[BUFFER_SIZE];
 			try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file), buffer.length)) {
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				for(;;) {
@@ -114,8 +116,6 @@ public class FileUtil {
 		}
 		
 		public void file(File file, String content) {
-			char[] buffer = new char[65536];
-			
 			// Make parent directory if necessary.
 			{
 				File parent = file.getParentFile();
@@ -123,7 +123,7 @@ public class FileUtil {
 					parent.mkdirs();
 				}
 			}
-			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), context.charset), buffer.length)) {
+			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), context.charset), BUFFER_SIZE)) {
 				bw.append(content);
 			} catch (IOException e) {
 				String exceptionName = e.getClass().getSimpleName();
@@ -143,8 +143,6 @@ public class FileUtil {
 		private RawWrite() {
 		}
 		public void file(File file, byte[] content) {
-			char[] buffer = new char[65536];
-			
 			// Make parent directory if necessary.
 			{
 				File parent = file.getParentFile();
@@ -152,7 +150,7 @@ public class FileUtil {
 					parent.mkdirs();
 				}
 			}
-			try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), buffer.length)) {
+			try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), BUFFER_SIZE)) {
 				bos.write(content);
 			} catch (IOException e) {
 				String exceptionName = e.getClass().getSimpleName();
