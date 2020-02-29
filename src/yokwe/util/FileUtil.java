@@ -4,11 +4,13 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -142,7 +144,9 @@ public class FileUtil {
 	public static class RawWrite {
 		private RawWrite() {
 		}
-		public void file(File file, byte[] content) {
+		public void file(File file, InputStream is) {
+			byte[] buffer = new byte[BUFFER_SIZE];
+			
 			// Make parent directory if necessary.
 			{
 				File parent = file.getParentFile();
@@ -150,13 +154,21 @@ public class FileUtil {
 					parent.mkdirs();
 				}
 			}
-			try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), BUFFER_SIZE)) {
-				bos.write(content);
+			try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), buffer.length)) {
+				for(;;) {
+					int len = is.read(buffer);
+					if (len == -1) break;
+					bos.write(buffer, 0, len);
+				}
 			} catch (IOException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
 			}
+		}
+		public void file(File file, byte[] content) {
+			InputStream is = new ByteArrayInputStream(content);
+			file(file, is);
 		}
 		public void file(String path, byte[] content) {
 			file (new File(path), content);
