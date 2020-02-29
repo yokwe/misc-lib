@@ -500,6 +500,19 @@ public class CSVUtil {
 						fieldInfo.field.set(data, localDate);
 					}
 						break;
+					case "java.time.LocalTime":
+					{
+						final LocalTime localTime;
+						
+						if (value.isEmpty() || value.equals("0")) {
+							localTime = NULL_LOCAL_TIME;
+						} else {
+							localTime = LocalTime.parse(value);
+						}
+						
+						fieldInfo.field.set(data, localTime);
+					}
+						break;
 					default:
 						if (fieldInfo.enumMap != null) {
 							if (fieldInfo.enumMap.containsKey(value)) {
