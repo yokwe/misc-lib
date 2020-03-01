@@ -175,6 +175,10 @@ public class FileUtil {
 		}
 	}
 	
+	
+	//
+	// listFile
+	//
 	public static List<File> listFile(File dir) {
 		List<File> ret = new ArrayList<>();
 		
@@ -200,6 +204,10 @@ public class FileUtil {
 		return listFile(new File(dirPath));
 	}
 	
+	
+	//
+	// md5FileMap md5Set
+	//
 	public static Map<File, String> md5FileMap(List<File> list) {
 		Map<File, String> ret = new TreeMap<>();
 		for(File file: list) {
@@ -214,4 +222,25 @@ public class FileUtil {
 		return ret;
 	}
 
+	
+	//
+	// touch
+	//
+	public static void touch(File file) {
+		try {
+			if (file.exists()) {
+				file.setLastModified(System.currentTimeMillis());
+			} else {
+				file.createNewFile();
+			}
+		} catch (IOException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
+	public static void touch(String path) {
+		File file = new File(path);
+		touch(file);
+	}
 }
