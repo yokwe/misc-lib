@@ -321,8 +321,15 @@ public class JSONBase {
 			fieldInfo.field.set(this, "");
 			break;
 		default:
-			logger.error("Unexptected type {}", toString());
-			throw new UnexpectedException("Unexptected type");
+			if (fieldInfo.field.getType().isPrimitive()) {
+				logger.error("Unexpected fiedl type");
+				logger.error("  field {}", fieldInfo.name);
+				logger.error("  type  {}", fieldInfo.type);
+				throw new UnexpectedException("Unexpected fiedl type");
+			} else {
+				fieldInfo.field.set(this, null);
+			}
+			break;
 		}
 	}
 	private void setValue(ClassInfo.FieldInfo fieldInfo, JsonArray jsonArray) throws IllegalArgumentException, IllegalAccessException {
