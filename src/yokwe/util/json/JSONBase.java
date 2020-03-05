@@ -344,8 +344,34 @@ public class JSONBase {
 		}
 			break;
 		default:
-			logger.error("Unexpected array component type {} {}", componentTypeName, toString());
-			throw new UnexpectedException("Unexpected array component type");
+			if (JSONBase.class.isAssignableFrom(componentType)) {
+				ClassInfo classInfo = ClassInfo.get(componentType);
+				int jsonArraySize = jsonArray.size();
+				JSONBase[] value = (JSONBase[])Array.newInstance(componentType, jsonArraySize);
+				
+				try {
+					for(int i = 0; i < jsonArraySize; i++) {
+						JsonValue jsonValue = jsonArray.get(i);
+						
+						switch(jsonValue.getValueType()) {
+						case OBJECT:
+							value[i] = classInfo.construcor.newInstance(jsonValue.asJsonObject());
+							break;
+						default:
+							logger.error("Unexpected json array element type {} {}", jsonValue.getValueType().toString(), toString());
+							throw new UnexpectedException("Unexpected json array element type");
+						}
+					}
+					fieldInfo.field.set(this, value);
+				} catch (InstantiationException | InvocationTargetException e) {
+					String exceptionName = e.getClass().getSimpleName();
+					logger.error("{} {}", exceptionName, e);
+					throw new UnexpectedException(exceptionName, e);
+				}
+			} else {
+				logger.error("Unexpected array component type {} {}", componentTypeName, toString());
+				throw new UnexpectedException("Unexpected array component type");
+			}
 		}
 	}
 
