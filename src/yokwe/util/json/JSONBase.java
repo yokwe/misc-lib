@@ -276,8 +276,18 @@ public class JSONBase {
 			}
 			break;
 		default:
-			logger.error("Unexptected type {}", toString());
-			throw new UnexpectedException("Unexptected type");
+			if (fieldInfo.enumMap != null) {
+				String value = jsonString.getString();
+				if (fieldInfo.enumMap.containsKey(value)) {
+					fieldInfo.field.set(this, fieldInfo.enumMap.get(value));
+				} else {
+					logger.error("Unknow enum value  {}  {}", fieldInfo.clazz.getName(), value);
+					throw new UnexpectedException("Unknow enum value");
+				}
+			} else {
+				logger.error("Unexptected type {}", toString());
+				throw new UnexpectedException("Unexptected type");
+			}
 		}
 	}
 	private void setValue(ClassInfo.FieldInfo fieldInfo, boolean value) throws IllegalArgumentException, IllegalAccessException {

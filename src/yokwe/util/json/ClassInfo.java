@@ -30,11 +30,15 @@ public class ClassInfo {
 	
 	public static class FieldInfo {
 		public final Field    field;
+		public final Class<?> clazz;
 		public final String   name;
 		public final String   jsonName;
 		public final String   type;
 		public final boolean  isArray;
 		public final boolean  ignoreField;
+		
+		public final Map<String, Enum<?>> enumMap;
+
 		
 		public final DateTimeFormatter dateTimeFormatter;
 		
@@ -42,6 +46,7 @@ public class ClassInfo {
 			this.field = field;
 			
 			this.name  = field.getName();
+			this.clazz = field.getType();
 
 			// Use JSONName if exists.
 			JSONName jsonName = field.getDeclaredAnnotation(JSONName.class);
@@ -55,6 +60,19 @@ public class ClassInfo {
 			
 			DateTimeFormat dateTimeFormat = field.getDeclaredAnnotation(DateTimeFormat.class);
 			this.dateTimeFormatter = (dateTimeFormat == null) ? null : DateTimeFormatter.ofPattern(dateTimeFormat.value());
+			
+			if (clazz.isEnum()) {
+				enumMap = new TreeMap<>();
+				
+				@SuppressWarnings("unchecked")
+				Class<Enum<?>> enumClazz = (Class<Enum<?>>)clazz;
+				for(Enum<?> e: enumClazz.getEnumConstants()) {
+					enumMap.put(e.toString(), e);
+				}
+			} else {
+				enumMap = null;
+			}
+
 		}
 		
 		@Override
