@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,8 +53,9 @@ public class JSONBase {
 	}
 	
 
-	public static final LocalDateTime NULL_LOCAL_DATE_TIME = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC);
-	public static final LocalDate     NULL_LOCAL_DATE      = LocalDate.ofEpochDay(0);
+	public static final LocalDate     NULL_LOCAL_DATE      = LocalDate.of(0, 1, 1);
+	public static final LocalTime     NULL_LOCAL_TIME      = LocalTime.of(0, 0, 0);
+	public static final LocalDateTime NULL_LOCAL_DATE_TIME = LocalDateTime.of(NULL_LOCAL_DATE, NULL_LOCAL_TIME);
 
 	public static LocalDateTime getLocalDateTimeFromMilli(long value) {
 		return LocalDateTime.ofInstant(Instant.ofEpochMilli(value), ZoneOffset.UTC);
