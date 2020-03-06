@@ -203,8 +203,11 @@ public class JSONBase {
 				}
 			}
 			
-			// Assign default value, if field value is null)
+			// Assign default value for LocalDate and LocalDateTime, if field value is null and not appeared in jsonObject
 			for(ClassInfo.FieldInfo fieldInfo: iexInfo.fieldInfos) {
+				// Skip if name is exist in jsonObject
+				if (jsonObject.containsKey(fieldInfo.jsonName)) continue;
+
 				Object o = fieldInfo.field.get(this);
 				// If field is null, assign default value
 				if (o == null) {
