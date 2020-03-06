@@ -670,7 +670,16 @@ public class CSVUtil {
 					}
 						break;
 					default:
-						writeField(bw, fieldInfo.field.get(value).toString());
+					{
+						Object fieldValue = fieldInfo.field.get(value);
+						if (fieldValue == null) {
+							logger.error("field has null value");
+							logger.error("  field  {}  {}", fieldInfo.clazzName, fieldInfo.name);
+							throw new UnexpectedException("field has null value");
+						} else {
+							writeField(bw, fieldValue.toString());
+						}
+					}
 						break;
 					}
 				}
