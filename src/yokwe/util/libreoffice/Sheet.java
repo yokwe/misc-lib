@@ -81,8 +81,11 @@ public class Sheet {
 		
 		public final String   name;
 		public final int      index;
-		public final Field    field;
-		public final int      fieldType;					
+		
+		public final Field       field;
+		public final int         fieldType;
+		public final Map<String, Enum<?>> fieldEnumMap;
+
 		public final String   numberFormat;
 		public final boolean  isDate;
 		public final boolean  isInteger;
@@ -90,8 +93,23 @@ public class Sheet {
 		public ColumnInfo(String name, int index, Field field) {
 			this.name         = name;
 			this.index        = index;
+			
 			this.field        = field;
 			this.fieldType    = field.getType().hashCode();
+			{
+				Class<?> clazz = field.getType();
+				if (clazz.isEnum()) {
+					fieldEnumMap = new TreeMap<>();
+					
+					@SuppressWarnings("unchecked")
+					Class<Enum<?>> enumClazz = (Class<Enum<?>>)clazz;
+					for(Enum<?> e: enumClazz.getEnumConstants()) {
+						fieldEnumMap.put(e.toString(), e);
+					}
+				} else {
+					fieldEnumMap = null;
+				}
+			}
 			
 			NumberFormat numberFormat = field.getDeclaredAnnotation(NumberFormat.class);
 			this.numberFormat = (numberFormat == null) ? null : numberFormat.value();
@@ -496,6 +514,8 @@ public class Sheet {
 										field.setInt(data, 0);
 									} else if (fieldType == HASHCODE_LONG) {
 										field.setLong(data, 0);
+									} else if (columnInfo.fieldEnumMap != null) {
+										field.set(data, null);
 									} else {
 										logger.error("Unknow field type = {}", columnInfo.field.getType().getName());
 										throw new UnexpectedException("Unexpected");
@@ -515,6 +535,14 @@ public class Sheet {
 										field.setInt(data, Integer.valueOf(value));
 									} else if (fieldType == HASHCODE_LONG) {
 										field.setLong(data, Integer.valueOf(value));
+									} else if (columnInfo.fieldEnumMap != null) {
+										if (columnInfo.fieldEnumMap.containsKey(value)) {
+											Enum<?> enumValue = columnInfo.fieldEnumMap.get(value);
+											field.set(data, enumValue);
+										} else {
+											logger.error("Unknow enum value = {}  {}", columnInfo.field.getType().getName(), value);
+											throw new UnexpectedException("Unexpected");											
+										}
 									} else {
 										logger.error("Unknow field type = {}", columnInfo.field.getType().getName());
 										throw new UnexpectedException("Unexpected");
