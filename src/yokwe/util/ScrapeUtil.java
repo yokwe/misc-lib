@@ -22,13 +22,10 @@ public class ScrapeUtil {
 	private static class ClassInfo {
 		final Constructor<?> constructor;
 		final FieldInfo[]    fieldInfos;
-		final Pattern        pattern;
 		
-		ClassInfo(Class<?> clazz, Constructor<?> constructor, FieldInfo[] fieldInfos, Pattern pattern) {
-			clazz.getName();
+		ClassInfo(Constructor<?> constructor, FieldInfo[] fieldInfos) {
 			this.constructor = constructor;
 			this.fieldInfos  = fieldInfos;
-			this.pattern     = pattern;
 		}
 	}
 	private static class FieldInfo {
@@ -91,7 +88,6 @@ public class ScrapeUtil {
 					}
 				}
 
-				Pattern     pattern = null;
 				FieldInfo[] fieldInfos;
 				{
 					List<FieldInfo> list = new ArrayList<>();
@@ -100,23 +96,8 @@ public class ScrapeUtil {
 						Field field   = fields[i];
 						int modifiers = field.getModifiers();
 						
-						if (Modifier.isStatic(modifiers)) {
-							if (Modifier.isPublic(modifiers)) {
-								if (field.getType().equals(Pattern.class)) {
-									Pattern newValue = (Pattern)field.get(null);
-									if (pattern == null) {
-										pattern = newValue;
-									} else {
-										logger.error("class has more than one public static Pattern ");
-										logger.error("  clazz       {}", clazz.getName());
-										logger.error("  old         {}", pattern.toString());
-										logger.error("  new         {}", newValue.toString());
-										throw new UnexpectedException("class has more than one public static Pattern ");
-									}
-								}
-							}
-							continue;
-						}
+						// Skip static
+						if (Modifier.isStatic(modifiers)) continue;
 
 						// Sanity check
 						if (!Modifier.isPublic(modifiers)) {
@@ -140,11 +121,11 @@ public class ScrapeUtil {
 					}
 				}
 				
-				ClassInfo classInfo = new ClassInfo(clazz, constructor, fieldInfos, pattern);
+				ClassInfo classInfo = new ClassInfo(constructor, fieldInfos);
 				classInfoMap.put(clazzName, classInfo);
 				
 				return classInfo;
-			} catch (IllegalArgumentException | SecurityException | IllegalAccessException e) {
+			} catch (IllegalArgumentException | SecurityException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
@@ -159,12 +140,15 @@ public class ScrapeUtil {
 			
 			Matcher m = pat.matcher(string);
 			if (m.find()) {
-				int count = 0;
-				for(FieldInfo fieldInfo: classInfo.fieldInfos) {
-					String name = fieldInfo.name;
-					
-					String value = m.group(name);
-					args[count++] = value;
+				for(int i = 0; i < classInfo.fieldInfos.length; i++) {
+					String name  = classInfo.fieldInfos[i].name;
+					args[i] = m.group(name);
+					if (args[i] == null) {
+						logger.error("value is null");
+						logger.error("  clazz  {}", clazz.getName());
+						logger.error("  name   {}", name);
+						throw new UnexpectedException("value is null");
+					}
 				}
 				@SuppressWarnings("unchecked")
 				E ret = (E)classInfo.constructor.newInstance((Object[])args);
@@ -178,16 +162,34 @@ public class ScrapeUtil {
 			throw new UnexpectedException(exceptionName, e);
 		}
 	}
+	
+	public static <E> List<E> getList(Class<E> clazz, Pattern pat, String string) {
+		try {
+			List<E> ret = new ArrayList<>();
+			
+			ClassInfo classInfo = getClassInfo(clazz);
+			String[] args = new String[classInfo.fieldInfos.length];
 
-	public static <E> E getInstance(Class<E> clazz, String string) {
-		ClassInfo classInfo = getClassInfo(clazz);
-		if (classInfo.pattern == null) {
-			logger.error("class have no public static Pattern");
-			logger.error("  clazz  {}", clazz.getName());
-			throw new UnexpectedException("class have no pattern");
-		} else {
-			return getInstance(clazz, classInfo.pattern, string);
+			Matcher m = pat.matcher(string);
+			while(m.find()) {
+				for(int i = 0; i < classInfo.fieldInfos.length; i++) {
+					String name  = classInfo.fieldInfos[i].name;
+					args[i] = m.group(name);
+					if (args[i] == null) {
+						logger.warn("value is null {} {}", clazz.getName(), name);
+					}
+				}
+				@SuppressWarnings("unchecked")
+				E value = (E)classInfo.constructor.newInstance((Object[])args);
+				
+				ret.add(value);
+			}
+			
+			return ret;
+		} catch (SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
 		}
 	}
-
 }
