@@ -1,4 +1,4 @@
-package yokwe.util.json;
+package yokwe.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

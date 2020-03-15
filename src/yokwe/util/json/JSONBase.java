@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
+import yokwe.util.GenericInfo;
 import yokwe.util.HttpUtil;
 
 public class JSONBase {
