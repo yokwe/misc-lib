@@ -133,7 +133,7 @@ public class ScrapeUtil {
 		}
 	}
 	
-	public static <E> E getInstance(Class<E> clazz, Pattern pat, String string) {
+	public static <E> E get(Class<E> clazz, Pattern pat, String string) {
 		try {
 			ClassInfo classInfo = getClassInfo(clazz);
 			String[] args = new String[classInfo.fieldInfos.length];
