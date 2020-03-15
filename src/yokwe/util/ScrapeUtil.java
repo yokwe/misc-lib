@@ -133,8 +133,8 @@ public class ScrapeUtil {
 			return value.isEmpty() ? Optional.empty() : Optional.of(value);
 		}
 		default:
-			if (fieldInfo.enumMap != null) {
-				Map<String, Enum<?>> enumMap = fieldInfo.enumMap;
+			if (type.isEnum()) {
+				Map<String, Enum<?>> enumMap = getEnumMap(type);
 				
 				if (enumMap.containsKey(string)) {
 					Enum<?> value = enumMap.get(string);
@@ -142,14 +142,14 @@ public class ScrapeUtil {
 				} else {
 					logger.error("Unknow enum value");
 					logger.error("  name  {}", fieldInfo.name);
-					logger.error("  type  {}", fieldInfo.typeName);
+					logger.error("  type  {}", typeName);
 					logger.error("  value {}", string);
 					throw new UnexpectedException("Unknow enum value");
 				}
 			}
 			logger.error("Unexpected type");
 			logger.error("  name  {}", fieldInfo.name);
-			logger.error("  type  {}", fieldInfo.typeName);
+			logger.error("  type  {}", typeName);
 			logger.error("  value {}", string);
 			throw new UnexpectedException("Unexpected type");
 		}
@@ -165,6 +165,37 @@ public class ScrapeUtil {
 		return value;
 	}
 	
+	private static Map<String, Map<String, Enum<?>>> enumMapMap = new TreeMap<>();
+	private static Map<String, Enum<?>> getEnumMap(Class<?> clazz) {
+		String typeName = clazz.getTypeName();
+		if (!clazz.isEnum()) {
+			logger.error("Unexpected type");
+			logger.error("  type  {}", typeName);
+			throw new UnexpectedException("Unexpected type");
+		}
+		if (enumMapMap.containsKey(typeName)) {
+			return enumMapMap.get(typeName);
+		} else {
+			Map<String, Enum<?>> enumMap = new TreeMap<>();
+			@SuppressWarnings("unchecked")
+			Class<Enum<?>> enumClazz = (Class<Enum<?>>)clazz;
+			for(Enum<?> e: enumClazz.getEnumConstants()) {
+				String key = e.toString();
+				if (enumMap.containsKey(key)) {
+					Enum<?> old = enumMap.get(key);
+					logger.error("Duplicate enum value");
+					logger.error("  enum {}", e.getClass().getName());
+					logger.error("  old  {} {}!", old.name(), old.toString());
+					logger.error("  new  {} {}!", e.name(), e.toString());
+					throw new UnexpectedException("Duplicate enum key");
+				} else {
+					enumMap.put(e.toString(), e);
+				}
+			}
+			enumMapMap.put(typeName, enumMap);
+			return enumMap;
+		}
+	}
 	
 	private static class ClassInfo {
 		final String          name;
@@ -179,41 +210,16 @@ public class ScrapeUtil {
 		}
 	}
 	private static class FieldInfo {
-		final Field   field;
+		final Field    field;
 		final String   name;
 		final Class<?> type;
 		final String   typeName;
-		final Map<String, Enum<?>> enumMap;
 
 		FieldInfo(Field field) {
 			this.field    = field;
 			this.name     = field.getName();
 			this.type     = field.getType();
 			this.typeName = field.getType().getName();
-			
-			Class<?> clazz = field.getType();
-
-			if (clazz.isEnum()) {
-				enumMap = new TreeMap<>();
-				
-				@SuppressWarnings("unchecked")
-				Class<Enum<?>> enumClazz = (Class<Enum<?>>)clazz;
-				for(Enum<?> e: enumClazz.getEnumConstants()) {
-					String key = e.toString();
-					if (enumMap.containsKey(key)) {
-						Enum<?> old = enumMap.get(key);
-						logger.error("Duplicate enum value");
-						logger.error("  enum {}", e.getClass().getName());
-						logger.error("  old  {} {}!", old.name(), old.toString());
-						logger.error("  new  {} {}!", e.name(), e.toString());
-						throw new UnexpectedException("Duplicate enum key");
-					} else {
-						enumMap.put(e.toString(), e);
-					}
-				}
-			} else {
-				enumMap = null;
-			}
 		}
 	}
 	private static Map<String, ClassInfo> classInfoMap = new TreeMap<>();
@@ -379,8 +385,8 @@ public class ScrapeUtil {
 			arg = toOptional(fieldInfo, stringValue);
 			break;
 		default:
-			if (fieldInfo.enumMap != null) {
-				Map<String, Enum<?>> enumMap = fieldInfo.enumMap;
+			if (fieldInfo.type.isEnum()) {
+				Map<String, Enum<?>> enumMap = getEnumMap(fieldInfo.type);
 				
 				if (enumMap.containsKey(stringValue)) {
 					arg = enumMap.get(stringValue);
