@@ -21,7 +21,7 @@ public class GenericInfo {
 		Type genericType = field.getGenericType();
 		if (genericType instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType)genericType;
-			java.lang.reflect.Type rawType = parameterizedType.getRawType();
+			Type rawType = parameterizedType.getRawType();
 			Type[] typeArguments = parameterizedType.getActualTypeArguments();
 
 			if (rawType instanceof Class) {
