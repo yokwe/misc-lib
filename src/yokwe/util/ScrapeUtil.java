@@ -137,7 +137,7 @@ public class ScrapeUtil {
 		switch(typeName) {
 		case CLASS_STRING:
 		{
-			String value = toStringValue(string);
+			String value = toStringValue(string, fieldInfo.asNubmer);
 			return value.isEmpty() ? Optional.empty() : Optional.of(value);
 		}
 		default:
@@ -163,12 +163,16 @@ public class ScrapeUtil {
 		}
 	}
 	
-	private static String toStringValue(String string) {
+	private static String toStringValue(String string, boolean asNumber) {
 		if (string == null) return "";
 		
 		String value = string;
 		while(value.contains(NBSP)) {
 			value = value.replace(NBSP, "");
+		}
+		if (asNumber) {
+			// Remove comma in number string
+			value = value.replace(",", "");
 		}
 		return value;
 	}
@@ -362,11 +366,7 @@ public class ScrapeUtil {
 		
 		switch(typeName) {
 		case CLASS_STRING:
-			if (fieldInfo.asNubmer) {
-				// Remove comma
-				stringValue = stringValue.replace(",", "");
-			}
-			arg = toStringValue(stringValue);
+			arg = toStringValue(stringValue, fieldInfo.asNubmer);
 			break;
 		case CLASS_DOUBLE:
 			arg = toClassDouble(stringValue);
