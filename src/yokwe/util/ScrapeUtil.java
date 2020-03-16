@@ -229,7 +229,7 @@ public class ScrapeUtil {
 			this.name     = field.getName();
 			this.type     = field.getType();
 			this.typeName = field.getType().getName();
-			this.asNubmer = field.getAnnotation(AsNumber.class) != null;
+			this.asNubmer = field.isAnnotationPresent(AsNumber.class);
 		}
 	}
 	private static Map<String, ClassInfo> classInfoMap = new TreeMap<>();
