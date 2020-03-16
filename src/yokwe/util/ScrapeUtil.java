@@ -1,5 +1,9 @@
 package yokwe.util;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -24,6 +28,10 @@ import yokwe.UnexpectedException;
 
 public class ScrapeUtil {
 	static final org.slf4j.Logger logger = LoggerFactory.getLogger(StringUtil.class);
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public static @interface AsNumber {}
 
 	private static final String NBSP = "&nbsp;";
 	
@@ -214,12 +222,14 @@ public class ScrapeUtil {
 		final String   name;
 		final Class<?> type;
 		final String   typeName;
+		final boolean  asNubmer;
 
 		FieldInfo(Field field) {
 			this.field    = field;
 			this.name     = field.getName();
 			this.type     = field.getType();
 			this.typeName = field.getType().getName();
+			this.asNubmer = field.getAnnotation(AsNumber.class) != null;
 		}
 	}
 	private static Map<String, ClassInfo> classInfoMap = new TreeMap<>();
@@ -352,6 +362,10 @@ public class ScrapeUtil {
 		
 		switch(typeName) {
 		case CLASS_STRING:
+			if (fieldInfo.asNubmer) {
+				// Remove comma
+				stringValue = stringValue.replace(",", "");
+			}
 			arg = toStringValue(stringValue);
 			break;
 		case CLASS_DOUBLE:
