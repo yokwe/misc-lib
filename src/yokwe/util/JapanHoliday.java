@@ -209,22 +209,33 @@ public class JapanHoliday {
 	private static LocalDate lastTradingDate = null;
 	public static LocalDate getLastTradingDate() {
 		if (lastTradingDate == null) {
-			LocalDateTime today = LocalDateTime.now(ZONE_ID);
-			if (today.getHour() < HOUR_CLOSE_MARKET) today = today.minusDays(1); // Move to yesterday if it is before market close
+			LocalDateTime now = LocalDateTime.now(ZONE_ID);
+			LocalDate date = now.toLocalDate();
 
-			for(;;) {
-				if (isClosed(today)) {
-					today = today.minusDays(1);
-					continue;
-				}
+//			if (now.getHour() < HOUR_CLOSE_MARKET) date = date.minusDays(1); // Move to yesterday if it is before market close
 
-				break;
+			if (isClosed(date)) {
+				date = getPreviousTradingDate(date);
 			}
 			
-			lastTradingDate = today.toLocalDate();
+			lastTradingDate = date;
 			logger.info("Last Trading Date {}", lastTradingDate);
 		}
 		return lastTradingDate;
+	}
+	public static LocalDate getNextTradingDate(LocalDate date) {
+		date = date.plusDays(1);
+		while(isClosed(date)) {
+			date = date.plusDays(1);
+		}
+		return date;
+	}
+	public static LocalDate getPreviousTradingDate(LocalDate date) {
+		date = date.minusDays(1);
+		while(isClosed(date)) {
+			date = date.minusDays(1);
+		}
+		return date;
 	}
 
 	public static void main(String[] args) {
