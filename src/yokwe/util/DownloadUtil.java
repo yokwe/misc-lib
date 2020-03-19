@@ -11,8 +11,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,29 +38,90 @@ import org.apache.http.message.BasicHeader;
 import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
-import yokwe.util.CSVUtil;
 
 public class DownloadUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DownloadUtil.class);
 
-	public static class Target {
-		public List<Target> load(String path) {
-			return CSVUtil.read(Target.class).file(path);
+	public static interface Target {
+		public String       getName();
+		public String       getURL();
+		
+		public OutputStream getOutputStream();
+		public Writer       getWriter();
+		
+		public void beforeProcess();
+		public void afterProcess();
+	}
+	
+	public static class FileTarget implements Target {
+		private final String  url;
+		private final File    file;
+		private final String  name;
+		
+		public FileTarget(String url, File file, String name) {
+			this.url     = url;
+			this.file    = file;
+			this.name    = name;
 		}
-		public void save(String path, Collection<Target> collection) {
-			CSVUtil.write(Target.class).file(file, collection);
+		public FileTarget(String url, File file) {
+			this(url, file, file.getName());
+		}
+		public FileTarget(String url, String path) {
+			this(url, new File(path));
+		}
+		public FileTarget(String url, String path, String name) {
+			this(url, new File(path), name);
 		}
 		
-		final String url;
-		final File   file;
-		
-		public Target(String url, File file) {
-			this.url  = url;
-			this.file = file;
+		@Override
+		public String getName() {
+			return name;
 		}
-		public Target(String url, String path) {
-			this.url  = url;
-			this.file = new File(path);
+		@Override
+		public String getURL() {
+			return url;
+		}
+		
+		@Override
+		public OutputStream getOutputStream() {
+			try {
+				OutputStream os = new FileOutputStream(file);
+				
+				return os;
+			} catch (FileNotFoundException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		
+		@Override
+		public Writer getWriter() {
+			try {
+				OutputStream os = new FileOutputStream(file);
+				Writer       w  = new OutputStreamWriter(os);
+				return w;
+			} catch (IOException e) {
+				String exceptionName = e.getClass().getSimpleName();
+				logger.error("{} {}", exceptionName, e);
+				throw new UnexpectedException(exceptionName, e);
+			}
+		}
+		
+		@Override
+		public void beforeProcess() {
+			// create parent directories if necessary
+			{
+				File parent = file.getParentFile();
+				if (!parent.exists()) {
+					parent.mkdirs();
+				}
+			}
+		}
+		
+		@Override
+		public void afterProcess() {
+			// No need to close this.os and this.w. They are closed by ResponseHandlerTarget.handleResponse()
 		}
 	}
 	
@@ -109,14 +170,6 @@ public class DownloadUtil {
 			this.context.targets.add(target);
 			return this;
 		}
-		public Instance withTarget(String url, File file) {
-			this.context.targets.add(new Target(url, file));
-			return this;
-		}
-		public Instance withTarget(String url, String path) {
-			this.context.targets.add(new Target(url, path));
-			return this;
-		}
 		public Instance withMaxThread(int maxThread) {
 			this.context.maxThread = maxThread;
 			return this;
@@ -144,28 +197,11 @@ public class DownloadUtil {
 		return httpClientBuilder.build();
 	}
 
-	public static class ResponseHandlerFile implements ResponseHandler<Void> {
-		private final OutputStream os;
-		public ResponseHandlerFile(OutputStream os) {
-			this.os = os;
-		}
-		public ResponseHandlerFile(File file) {
-			{
-				File parent = file.getParentFile();
-				if (!parent.exists()) {
-					parent.mkdirs();
-				}
-			}
-			try {
-				this.os = new FileOutputStream(file);
-			} catch (FileNotFoundException e) {
-				String exceptionName = e.getClass().getSimpleName();
-				logger.error("{} {}", exceptionName, e);
-				throw new UnexpectedException(exceptionName, e);
-			}
-		}
-		public ResponseHandlerFile(String path) {
-			this(new File(path));
+	public static class ResponseHandlerTarget implements ResponseHandler<Void> {
+		private final Target target;
+
+		public ResponseHandlerTarget(Target target) {
+			this.target = target;
 		}
 		@Override
 		public Void handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
@@ -187,6 +223,8 @@ public class DownloadUtil {
 	                }
 
 	            	if (charset == null) {
+	            		target.beforeProcess();
+	            		OutputStream os = target.getOutputStream();
 	            		BufferedOutputStream bos = new BufferedOutputStream(os, 64 * 1024);
 		                try {
 		                    byte[] buffer = new byte[4096];
@@ -199,10 +237,15 @@ public class DownloadUtil {
 		                } finally {
 		                    is.close();
 		                    bos.close();
+		                	// after close os, call afterProcess
+		                    target.afterProcess();
 		                }
 	            	} else {
                 		Reader r = new InputStreamReader(is, charset);
-                		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8), 64 * 1024);
+                		
+	            		target.beforeProcess();
+                		Writer w = target.getWriter();
+                		BufferedWriter bw = new BufferedWriter(w, 64 * 1024);
 
 		                try {
 		                    char[] buffer = new char[4096];
@@ -212,8 +255,10 @@ public class DownloadUtil {
 		                    	bw.write(buffer, 0, len);
 		                    }
 		                } finally {
-		                	bw.close();
 		                	r.close();
+		                	bw.close();
+		                	// after close w, call afterProcess
+		                    target.afterProcess();
 		                }
 	            	}
 	            	return null;
@@ -251,16 +296,16 @@ public class DownloadUtil {
 				if (target == null) break;
 				
 				if ((count % 100) == 0) {
-					logger.info("{}", String.format("%4d / %4d  %s", count, targetSize, target.file.getName()));
+					logger.info("{}", String.format("%4d / %4d  %s", count, targetSize, target.getName()));
 				}
 				download(target);
 			}
 		}
 		
 		private void download(Target target) {			
-			HttpGet httpGet = new HttpGet(target.url);
+			HttpGet httpGet = new HttpGet(target.getURL());
 			try {
-				ResponseHandler<Void> responseHandler = new ResponseHandlerFile(target.file);
+				ResponseHandler<Void> responseHandler = new ResponseHandlerTarget(target);
 				closeableHttpClient.execute(httpGet, responseHandler);
 			} catch (IOException e) {
 				String exceptionName = e.getClass().getSimpleName();
