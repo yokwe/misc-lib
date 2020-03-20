@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
+import java.util.function.Consumer;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -43,7 +45,6 @@ public class DownloadUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DownloadUtil.class);
 
 	public static interface Target {
-		public String       getName();
 		public String       getURL();
 		
 		public OutputStream getOutputStream();
@@ -54,29 +55,15 @@ public class DownloadUtil {
 	}
 	
 	public static class FileTarget implements Target {
-		private final String  url;
-		private final File    file;
-		private final String  name;
-		
-		public FileTarget(String url, File file, String name) {
-			this.url     = url;
-			this.file    = file;
-			this.name    = name;
-		}
-		public FileTarget(String url, File file) {
-			this(url, file, file.getName());
-		}
-		public FileTarget(String url, String path) {
-			this(url, new File(path));
-		}
-		public FileTarget(String url, String path, String name) {
-			this(url, new File(path), name);
+		public final String                url;
+		public final Consumer<FileTarget>  action;
+		public final File                  file;
+		public FileTarget(String url, Consumer<FileTarget> action, File file) {
+			this.url    = url;
+			this.action = action;
+			this.file   = file;
 		}
 		
-		@Override
-		public String getName() {
-			return name;
-		}
 		@Override
 		public String getURL() {
 			return url;
@@ -122,6 +109,49 @@ public class DownloadUtil {
 		@Override
 		public void afterProcess() {
 			// No need to close this.os and this.w. They are closed by ResponseHandlerTarget.handleResponse()
+			// call actions
+			this.action.accept(this);
+		}
+	}
+	public static class StringTarget implements Target {
+		public final String                 url;
+		public final Consumer<StringTarget> action;
+		public final StringWriter           stringWriter;
+		
+		public StringTarget(String url, Consumer<StringTarget> action) {
+			this.url          = url;
+			this.action       = action;
+			this.stringWriter = new StringWriter();
+		}
+		
+		public String getString() {
+			return stringWriter.toString();
+		}
+		
+		@Override
+		public String getURL() {
+			return this.url;
+		}
+		@Override
+		public OutputStream getOutputStream() {
+			logger.error("Unexpected");
+			throw new UnexpectedException("Unexpected");
+		}
+		@Override
+		public Writer getWriter() {
+			return stringWriter;
+		}
+		@Override
+		public void beforeProcess() {
+			this.stringWriter.getBuffer().setLength(0);
+		}
+		@Override
+		public void afterProcess() {
+			// No need to close this.os and this.w. They are closed by ResponseHandlerTarget.handleResponse()
+			// call actions
+			this.action.accept(this);
+			// free memory used in stringWriter
+			this.stringWriter.getBuffer().setLength(0);
 		}
 	}
 	
@@ -224,8 +254,7 @@ public class DownloadUtil {
 
 	            	if (charset == null) {
 	            		target.beforeProcess();
-	            		OutputStream os = target.getOutputStream();
-	            		BufferedOutputStream bos = new BufferedOutputStream(os, 64 * 1024);
+	            		BufferedOutputStream bos = new BufferedOutputStream(target.getOutputStream(), 64 * 1024);
 		                try {
 		                    byte[] buffer = new byte[4096];
 		                    for(;;) {
@@ -244,8 +273,7 @@ public class DownloadUtil {
                 		Reader r = new InputStreamReader(is, charset);
                 		
 	            		target.beforeProcess();
-                		Writer w = target.getWriter();
-                		BufferedWriter bw = new BufferedWriter(w, 64 * 1024);
+                		BufferedWriter bw = new BufferedWriter(target.getWriter(), 64 * 1024);
 
 		                try {
 		                    char[] buffer = new char[4096];
@@ -296,7 +324,7 @@ public class DownloadUtil {
 				if (target == null) break;
 				
 				if ((count % 100) == 0) {
-					logger.info("{}", String.format("%4d / %4d  %s", count, targetSize, target.getName()));
+					logger.info("{}", String.format("%4d / %4d", count, targetSize));
 				}
 				download(target);
 			}
