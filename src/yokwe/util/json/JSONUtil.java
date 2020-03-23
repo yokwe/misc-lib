@@ -187,7 +187,7 @@ public class JSONUtil {
 		toJSONStringVariable(gen, o, null);
 	}
 	
-	public static String toJSONString(Object o) {
+	public static <E extends JSONBase> String toJSONString(E o) {
 		StringWriter writer = new StringWriter();
 		
 		try (JsonGenerator gen = Json.createGenerator(writer)) {
@@ -201,7 +201,7 @@ public class JSONUtil {
 		return writer.toString();
 	}
 	
-	public static <E extends JSONBase> E fromJSONSTring(Class<E> clazz, String jsonString) {
+	public static <E extends JSONBase> E fromJSONString(Class<E> clazz, String jsonString) {
 		ClassInfo classInfo = ClassInfo.get(clazz);
 		try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
 			// Assume result is only one object
