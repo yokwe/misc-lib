@@ -1,6 +1,14 @@
 package yokwe.util;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -201,4 +209,132 @@ public class StringUtil {
 	    }
 	    return new String(hexChars);
 	}
+	
+	//
+	// toString(Object)
+	//
+	private static class ClassInfo {
+		private static class FieldInfo {
+			final Field field;
+			final String name;
+			final String type;
+			final boolean isArray;
+			
+			FieldInfo(Field field) {
+				Class<?> type = field.getType();
+				
+				this.field   = field;
+				this.name    = field.getName();
+				this.type    = type.getName();
+				this.isArray = type.isArray();
+			}
+		}
+
+		private static Map<String, ClassInfo> map = new TreeMap<>();
+		
+		final FieldInfo[] fieldInfos;
+		
+		static ClassInfo get(Object o) {
+			Class<?> clazz = o.getClass();
+			String clazzName = clazz.getName();
+			if (map.containsKey(clazzName)) {
+				return map.get(clazzName);
+			} else {
+				ClassInfo classInfo = new ClassInfo(clazz);
+				map.put(clazzName, classInfo);
+				return classInfo;
+			}
+		}
+		
+		ClassInfo(Class<?> clazz) {
+			List<FieldInfo> list = new ArrayList<>();
+			
+			for(Field field: clazz.getDeclaredFields()) {
+				int modifiers = field.getModifiers();
+				// Ignore static
+				if (Modifier.isStatic(modifiers)) continue;
+				list.add(new FieldInfo(field));
+			}
+			fieldInfos = list.toArray(new FieldInfo[0]);
+		}
+	}
+	public static String toString(Object o) {
+		try {
+			ClassInfo classInfo = ClassInfo.get(o);
+
+			List<String>  result = new ArrayList<>();
+			StringBuilder line   = new StringBuilder();
+			
+			for(ClassInfo.FieldInfo fieldInfo: classInfo.fieldInfos) {
+				line.setLength(0);
+				line.append(fieldInfo.name).append(": ");
+				
+				switch(fieldInfo.type) {
+				case "double":
+					line.append(Double.toString(fieldInfo.field.getDouble(o)));
+					break;
+				case "float":
+					line.append(fieldInfo.field.getFloat(o));
+					break;
+				case "long":
+					line.append(fieldInfo.field.getLong(o));
+					break;
+				case "int":
+					line.append(fieldInfo.field.getInt(o));
+					break;
+				case "short":
+					line.append(fieldInfo.field.getShort(o));
+					break;
+				case "byte":
+					line.append(fieldInfo.field.getByte(o));
+					break;
+				case "char":
+					line.append(String.format("'%c'", fieldInfo.field.getChar(o)));
+					break;
+				case "boolean":
+					line.append(fieldInfo.field.getBoolean(o) ? "true" : "false");
+					break;
+				default:
+				{
+					Object value = fieldInfo.field.get(o);
+					if (value == null) {
+						line.append("null");
+					} else if (value instanceof String) {
+						// Quote special character in string \ => \\  " => \"
+						String stringValue = value.toString().replace("\\", "\\\\").replace("\"", "\\\"");
+						line.append("\"").append(stringValue).append("\"");
+					} else if (value instanceof BigDecimal) {
+						BigDecimal bigDecimal = (BigDecimal)value;
+						line.append(bigDecimal.toPlainString());
+					} else if (fieldInfo.isArray) {
+						List<String> arrayElement = new ArrayList<>();
+						int length = Array.getLength(value);
+						for(int i = 0; i < length; i++) {
+							Object element = Array.get(value, i);
+							if (element instanceof String) {
+								// Quote special character in string \ => \\  " => \"
+								String stringValue = element.toString().replace("\\", "\\\\").replace("\"", "\\\"");
+								arrayElement.add(String.format("\"%s\"", stringValue));
+							} else {
+								arrayElement.add(String.format("%s", element.toString()));
+							}
+						}						
+						line.append("[").append(String.join(", ", arrayElement)).append("]");
+					} else {
+						line.append(value.toString());
+					}
+				}
+					break;
+				}
+				result.add(line.toString());
+			}
+			
+			return String.format("{%s}", String.join(", ", result));
+		} catch (IllegalAccessException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
+
 }
