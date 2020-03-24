@@ -18,5 +18,7 @@
 	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/jurt.jar"/>
 	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/ridl.jar"/>
 	<classpathentry kind="lib" path="data/jar/commons-logging-1.2.jar"/>
+	<classpathentry kind="lib" path="data/jar/javax.mail.jar"/>
+	<classpathentry kind="lib" path="data/jar/javamail-JAVAMAIL-1_6_2.zip"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
