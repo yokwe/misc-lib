@@ -49,13 +49,14 @@ public class GMail extends JSONBase {
 	
 	public String username;
 	public String password;
-	public String recipient;
+	public String to;
 	
 	public Map<String, String> config;
 	
 	public GMail() {
 		this.username = null;
 		this.password = null;
+		this.to       = null;
 		this.config   = new TreeMap<>();
 	}
 	
@@ -78,7 +79,7 @@ public class GMail extends JSONBase {
             Message message = new MimeMessage(session);
             
             message.setFrom(new InternetAddress(gmail.username));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(gmail.recipient));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(gmail.to));
             message.setSubject(subject);
             message.setText(text);
 
@@ -95,21 +96,20 @@ public class GMail extends JSONBase {
 		sendMessage(gmail, subject, text);
 	}
 	
-	public static void writeDefaultAccount() {
+	public static void writeAccountFile(String accountName, String username, String password, String to) {
 		GMail account = new GMail();
 		
-		account.username = "hasegawa.yasuhiro@gmail.com";
-		// FIXME supply actual password
-		account.password = "XXX";
-		account.recipient = "hasegawa.yasuhiro+ubuntu-dev@gmail.com";
+		account.username = username;
+		account.password = password;
+		account.to       = to;
 		
 		account.config.put("mail.smtp.host", "smtp.gmail.com");
 		account.config.put("mail.smtp.port", "587");
 		account.config.put("mail.smtp.auth", "true");
 		account.config.put("mail.smtp.starttls.enable", "true");
 		
-		GMail.save(GMail.DEFAULT_NAME, account);
-		GMail copy = GMail.load(GMail.DEFAULT_NAME);
+		GMail.save(accountName, account);
+		GMail copy = GMail.load(accountName);
 
 		logger.info("toString   {}", account.toJSONString());
 		logger.info("copyString {}", copy.toJSONString());
@@ -118,7 +118,7 @@ public class GMail extends JSONBase {
 	public static void main(String[] args) {
 		logger.info("START");
 		
-//		writeDefaultAccount();
+//	   	GMail.writeAccountFile(GMail.DEFAULT_NAME, "hasegawa.yasuhiro@gmail.com", "YOUR_PASSWORD", "hasegawa.yasuhiro+ubuntu-dev@gmail.com");
 		
 		logger.info("STOP");		
 	}
