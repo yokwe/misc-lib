@@ -81,7 +81,8 @@ public class JSONBase {
 			ClassInfo iexInfo = ClassInfo.get(this);
 			// Sanity check
 			for(ClassInfo.FieldInfo fieldInfo: iexInfo.fieldInfos) {
-				if (jsonObject.containsKey(fieldInfo.jsonName))  continue;
+				if (fieldInfo.ignoreField)                      continue;
+				if (jsonObject.containsKey(fieldInfo.jsonName)) continue;
 				// jsonObject doesn't contains field named fieldInfo.jsonName
 				logger.warn("Missing json field  {}  {}  {}", iexInfo.clazzName, fieldInfo.jsonName, jsonObject.keySet());
 			}
@@ -645,6 +646,8 @@ public class JSONBase {
 		ClassInfo classInfo = ClassInfo.get(clazz);
 
 		for(ClassInfo.FieldInfo fieldInfo: classInfo.fieldInfos) {
+			if (fieldInfo.ignoreField) continue;
+			
 			String fieldName  = fieldInfo.jsonName != null ? fieldInfo.jsonName : fieldInfo.name;
 			Object fieldValue = fieldInfo.field.get(o);
 			
