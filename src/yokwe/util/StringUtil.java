@@ -1,9 +1,17 @@
 package yokwe.util;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -213,13 +221,30 @@ public class StringUtil {
 	//
 	// toString(Object)
 	//
+	public enum TimeZone {
+		UTC,
+		LOCAL,
+		NEW_YORK,
+	}
+	
+	public static final ZoneId UTC      = ZoneOffset.UTC;
+	public static final ZoneId LOCAL    = ZoneId.systemDefault();
+	public static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
+	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public @interface UseTimeZone {
+		TimeZone value();
+	}
+
 	private static class ClassInfo {
 		private static class FieldInfo {
 			final Field field;
 			final String name;
 			final String type;
 			final boolean isArray;
-			
+			final TimeZone useTimeZone;
+
 			FieldInfo(Field field) {
 				Class<?> type = field.getType();
 				
@@ -227,11 +252,19 @@ public class StringUtil {
 				this.name    = field.getName();
 				this.type    = type.getName();
 				this.isArray = type.isArray();
+				
+				UseTimeZone useTimeZone = field.getDeclaredAnnotation(UseTimeZone.class);
+				if (useTimeZone != null) {
+					this.useTimeZone = useTimeZone.value();
+				} else {
+					this.useTimeZone = null;
+				}
 			}
 		}
 
 		private static Map<String, ClassInfo> map = new TreeMap<>();
 		
+		final Class<?>    clazz;
 		final FieldInfo[] fieldInfos;
 		
 		static ClassInfo get(Object o) {
@@ -247,15 +280,19 @@ public class StringUtil {
 		}
 		
 		ClassInfo(Class<?> clazz) {
-			List<FieldInfo> list = new ArrayList<>();
+			this.clazz = clazz;
 			
-			for(Field field: clazz.getDeclaredFields()) {
-				int modifiers = field.getModifiers();
-				// Ignore static
-				if (Modifier.isStatic(modifiers)) continue;
-				list.add(new FieldInfo(field));
+			{
+				List<FieldInfo> list = new ArrayList<>();
+				
+				for(Field field: clazz.getDeclaredFields()) {
+					int modifiers = field.getModifiers();
+					// Ignore static
+					if (Modifier.isStatic(modifiers)) continue;
+					list.add(new FieldInfo(field));
+				}
+				fieldInfos = list.toArray(new FieldInfo[0]);
 			}
-			fieldInfos = list.toArray(new FieldInfo[0]);
 		}
 	}
 	public static String toString(Object o) {
@@ -306,6 +343,31 @@ public class StringUtil {
 					} else if (value instanceof BigDecimal) {
 						BigDecimal bigDecimal = (BigDecimal)value;
 						line.append(bigDecimal.toPlainString());
+					} else if (value instanceof LocalDateTime) {
+						LocalDateTime  localDateTime  = (LocalDateTime)value;
+						OffsetDateTime offsetDateTime = localDateTime.atOffset(ZoneOffset.UTC);
+						
+						String stringValue;
+						if (fieldInfo.useTimeZone != null) {
+							switch(fieldInfo.useTimeZone) {
+							case UTC:
+								stringValue = offsetDateTime.atZoneSameInstant(UTC).toLocalDateTime().toString();
+								break;
+							case LOCAL:
+								stringValue = offsetDateTime.atZoneSameInstant(LOCAL).toLocalDateTime().toString();
+								break;
+							case NEW_YORK:
+								stringValue = offsetDateTime.atZoneSameInstant(NEW_YORK).toLocalDateTime().toString();
+								break;
+							default:
+								logger.error("Unexptected useTimeZone value {}", fieldInfo.useTimeZone);
+								throw new UnexpectedException("Unexptected useTimeZone value");
+							}
+						} else {
+							logger.error("No useTimeZone annotation  {}.{}", classInfo.clazz.getName(), fieldInfo.name);
+							throw new UnexpectedException("No useTimeZone annotation");
+						}
+						line.append(stringValue);
 					} else if (fieldInfo.isArray) {
 						List<String> arrayElement = new ArrayList<>();
 						int length = Array.getLength(value);
