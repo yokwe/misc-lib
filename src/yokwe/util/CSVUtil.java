@@ -186,16 +186,30 @@ public class CSVUtil {
 				
 				int fieldFirstChar = br.read();
 				if (fieldFirstChar == -1) {
-					// end of stream
-					logger.error("Unexpected end of stream");
-					logger.error("  list   !{}!", list);
-					logger.error("  field  !{}!", field.toString());
-					throw new UnexpectedException("Unexpected end of stream");
-				} else if (fieldFirstChar == '\n') {
-					// end of record
+					// end of record -- last field of last line without \r\n
 					field.setLength(0);
 					list.add("");
-//					logger.debug("nl  field  \"\"");
+					break;
+				} else if (fieldFirstChar == '\r') {
+					// end of record -- last field of record has no contents
+					int c2 = br.read();
+					if (c2 == -1) {
+						logger.error("Unexpected end of stream");
+						logger.error("  list   !{}!", list);
+						logger.error("  field  !{}!", field.toString());
+						throw new UnexpectedException("Unexpected end of stream");
+					} else if (c2 == '\n') {
+						field.setLength(0);
+						list.add("");
+						break;
+					} else {
+						logger.error("Unexpected char {}", String.format("%X", c2));
+						throw new UnexpectedException("Unexpected char");
+					}
+				} else if (fieldFirstChar == '\n') {
+					// end of record -- last field of record has no contents
+					field.setLength(0);
+					list.add("");
 					break;
 				} else if (fieldFirstChar == ',') {
 					// end of field -- empty field
