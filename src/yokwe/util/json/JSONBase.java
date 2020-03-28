@@ -851,5 +851,43 @@ public class JSONBase {
 			throw new UnexpectedException(exceptionName, e);
 		}
 	}
+	
+	public static <E extends JSONBase> List<E> getList(Class<E> clazz, String jsonString) {
+		ClassInfo classInfo = ClassInfo.get(clazz);
+		try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
+			// Assume result is array
+			JsonArray jsonArray = reader.readArray();
+			
+			int jsonArraySize = jsonArray.size();
+			List<E> ret = new ArrayList<>(jsonArraySize);
+			
+			for(int i = 0; i < jsonArraySize; i++) {
+				JsonValue jsonValue = jsonArray.get(i);
+				ValueType valueType = jsonValue.getValueType();
+				switch (valueType) {
+				case OBJECT:
+				{
+					JsonObject arg = jsonValue.asJsonObject();
+					@SuppressWarnings("unchecked")
+					E e = (E)classInfo.construcor.newInstance(arg);
+					ret.add(e);
+				}
+					break;
+				case NULL:
+					// Skip NULL
+					break;
+				default:
+					logger.info("Unexpected valueType  {}  {}  {}", i, valueType, jsonValue);
+					throw new UnexpectedException("Unexpected valueType");
+				}
+			}
+			
+			return ret;
+		} catch (IllegalAccessException | InstantiationException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
 
 }
