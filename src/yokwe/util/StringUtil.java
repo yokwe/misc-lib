@@ -1,5 +1,6 @@
 package yokwe.util;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -8,6 +9,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -132,6 +134,21 @@ public class StringUtil {
 		
 		return ret;
 	}
+	
+	
+	//
+	// urlEncode
+	//
+	public static String urlEncode(String symbol) {
+		try {
+			return URLEncoder.encode(symbol, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
+
 	
 	//
 	// toJavaConstName
