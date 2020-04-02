@@ -50,7 +50,7 @@ public class HttpUtil {
 	private static final String  DEFAULT_TRACE_DIR  = "tmp/http";
 	private static final String  DEFAULT_CHARSET    = "UTF-8";
 	private static final String  DEFAULT_REFERER    = null;
-	private static final String  DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36";
+	private static final String  DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit";
 	private static final String  DEFAULT_COOKIE     = null;
 	private static final String  DEFAULT_CONNECTION = "keep-alive";
 	private static final boolean DEFAULT_RAW_DATA   = false;
