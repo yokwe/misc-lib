@@ -3,7 +3,8 @@ package yokwe.util;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +18,7 @@ import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
@@ -48,7 +50,7 @@ public class HttpUtil {
 	
 	private static final boolean DEFAULT_TRACE      = false;
 	private static final String  DEFAULT_TRACE_DIR  = "tmp/http";
-	private static final String  DEFAULT_CHARSET    = "UTF-8";
+	private static final Charset DEFAULT_CHARSET    = StandardCharsets.UTF_8;
 	private static final String  DEFAULT_REFERER    = null;
 	private static final String  DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit";
 	private static final String  DEFAULT_COOKIE     = null;
@@ -58,7 +60,7 @@ public class HttpUtil {
 	private static class Context {
 		boolean trace;
 		String  traceDir;
-		String  charset;
+		Charset charset;
 		String  referer;
 		String  userAgent;
 		String  cookie;
@@ -125,7 +127,7 @@ public class HttpUtil {
 		return this;
 	}
 	public HttpUtil withCharset(String newValue) {
-		context.charset = newValue;
+		context.charset = Charset.forName(newValue);
 		return this;
 	}
 	public HttpUtil withReferer(String newValue) {
@@ -209,7 +211,19 @@ public class HttpUtil {
 					if (context.rawData) {
 						result = null;
 					} else {
-						result = toString(rawData);
+						Charset charset = null;
+						{
+							// Take charset from mime header "Content-Type"
+							if (headerMap.containsKey("Content-Type")) {
+								String contentTypeString = headerMap.get("Content-Type");
+								ContentType contentType = ContentType.parse(contentTypeString);
+								charset = contentType.getCharset();
+							}
+							if (charset == null) {
+								charset = context.charset;
+							}
+						}
+						result = new String(rawData, charset);
 					}
 					Result ret = new Result(context, url, result, headerMap, rawData);
 					
@@ -229,7 +243,7 @@ public class HttpUtil {
 						logger.error("entity RAW_DATA");
 					} else {
 						byte[] rawData = getRawData(response.getEntity());
-				    	logger.error("entity {}", toString(rawData));
+				    	logger.error("entity {}", new String(rawData, context.charset));
 					}
 				}
 				throw new UnexpectedException("download");
@@ -256,16 +270,6 @@ public class HttpUtil {
     		}
     	   	return baos.toByteArray();
     	} catch (IOException e) {
-			String exceptionName = e.getClass().getSimpleName();
-			logger.error("{} {}", exceptionName, e);
-			throw new UnexpectedException(exceptionName, e);
-		}
-	}
-	private String toString(byte[] data) {
-		try {
-			String ret = new String(data, context.charset);
-			return ret;
-		} catch (UnsupportedEncodingException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.error("{} {}", exceptionName, e);
 			throw new UnexpectedException(exceptionName, e);
