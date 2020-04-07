@@ -13,6 +13,8 @@ import org.apache.hc.core5.http.ProtocolVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import yokwe.UnexpectedException;
+
 public class Result {
 	static final Logger logger = LoggerFactory.getLogger(Result.class);
 
@@ -67,9 +69,19 @@ public class Result {
 					this.charset = charset;
 				}
 			} else {
+				logger.warn("no Content-Type header");
 				this.contentType = null;
 				this.charset     = null;
 			}
+		}
+	}
+
+	public String getBodyAsString() {
+		if (charset == null) {
+			logger.error("charset is null");
+			throw new UnexpectedException("charset is null");
+		} else {
+			return new String(body, charset);
 		}
 	}
 }
