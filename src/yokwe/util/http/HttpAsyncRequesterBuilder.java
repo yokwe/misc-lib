@@ -15,44 +15,32 @@ public final class HttpAsyncRequesterBuilder {
 		return new Context();
 	}
 	public static class Context {
-    	private HttpVersionPolicy httpVersionPolicy;
-    	private int               maxTotal;
-    	private int               defaultMaxPerRoute;
+    	private final H2RequesterBootstrap bootstrap;
     	
     	private Context() {
-	    	httpVersionPolicy  = HttpVersionPolicy.NEGOTIATE;
-	    	maxTotal           = 50;
-	    	defaultMaxPerRoute = 20;
-    	}
-		
-    	public Context setHttpVersionPolicy(HttpVersionPolicy newValue) {
-    		httpVersionPolicy = newValue;
-    		return this;
-    	}
-    	public Context setMaxTotal(int newValue) {
-    		maxTotal = newValue;
-    		return this;
-    	}
-    	public Context setDefaultMaxPerRoute(int newValue) {
-    		defaultMaxPerRoute = newValue;
-    		return this;
-    	}
-    	
-    	public HttpAsyncRequester get() {
-    		logger.info("httpVersionPolicy  {}", httpVersionPolicy);
-    		logger.info("maxTotal           {}", maxTotal);
-    		logger.info("defaultMaxPerRoute {}", defaultMaxPerRoute);
-    		
             H2Config h2Config = H2Config.custom()
                     .setPushEnabled(false)
                     .build();
             
-    		HttpAsyncRequester requester = H2RequesterBootstrap.bootstrap()
-                    .setH2Config(h2Config)
-                    .setVersionPolicy(httpVersionPolicy)
-                    .setMaxTotal(maxTotal)
-                    .setDefaultMaxPerRoute(defaultMaxPerRoute)
-                    .create();
+            bootstrap = H2RequesterBootstrap.bootstrap()
+                    .setH2Config(h2Config);
+    	}
+		
+    	public Context setVersionPolicy(HttpVersionPolicy newValue) {
+    		bootstrap.setVersionPolicy(newValue);
+    		return this;
+    	}
+    	public Context setMaxTotal(int newValue) {
+    		bootstrap.setMaxTotal(newValue);
+    		return this;
+    	}
+    	public Context setDefaultMaxPerRoute(int newValue) {
+    		bootstrap.setDefaultMaxPerRoute(newValue);
+    		return this;
+    	}
+    	
+    	public HttpAsyncRequester get() {            
+    		HttpAsyncRequester requester = bootstrap.create();
     		
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
