@@ -1,7 +1,6 @@
 package yokwe.util.http;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -74,8 +73,9 @@ public final class ClassicTaskProcessor implements Runnable {
 		threadCount = newValue;
 	}
 	
-	private static ExecutorService executor      = null;
-	private static int 		       taskQueueSize = 0;
+	private static ExecutorService        executor      = null;
+	private static int 		              taskQueueSize = 0;
+	private static ClassicTaskProcessor[] taskProcessorArray = null;
 	public static void startTask() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.setHttpAsyncRequester()");
@@ -86,8 +86,10 @@ public final class ClassicTaskProcessor implements Runnable {
 		logger.info("threadCount {}", threadCount);
 		executor = Executors.newFixedThreadPool(threadCount);
 		
+		taskProcessorArray = new ClassicTaskProcessor[threadCount];
 		for(int i = 0; i < threadCount; i++) {
 			ClassicTaskProcessor taskProcessor = new ClassicTaskProcessor(i);
+			taskProcessorArray[i] = taskProcessor;
 			executor.execute(taskProcessor);
 		}
 
@@ -101,6 +103,17 @@ public final class ClassicTaskProcessor implements Runnable {
 			logger.warn("{} {}", exceptionName, e);
 		}
 		executor = null;
+		
+		for(int i = 0; i < threadCount;) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format("TASK-%02d ", i));
+			for(int j = 0; j < 10; j++) {
+				if (i < threadCount) {
+					sb.append(String.format("%4d", taskProcessorArray[i++].taskCount));
+				}
+			}
+			logger.info("{}", sb.toString());
+		}
 	}
 	public static void startAndWaitTask() {
 		startTask();
@@ -108,23 +121,11 @@ public final class ClassicTaskProcessor implements Runnable {
 	}
 	
 	
-	
-	public static class MyResponseHandler implements HttpClientResponseHandler<Result> {
-		public final Task task;
-		
-		public MyResponseHandler(Task task) {
-			this.task = task;
-		}
-		
-		@Override
-		public Result handleResponse(ClassicHttpResponse response) throws HttpException, IOException {
-			return new Result(task, response);
-		}
-	}
-
 	private final int no;
+	private       int taskCount;
 	public ClassicTaskProcessor(int no) {
 		this.no = no;
+		this.taskCount = 0;
 	}
 	
 	@Override
@@ -147,18 +148,23 @@ public final class ClassicTaskProcessor implements Runnable {
 			}
 			if (task == null) break;
 			
-			if ((count % 100) == 0) {
+			if ((count % 1000) == 0) {
 				logger.info("{}", String.format("%4d / %4d", count, taskQueueSize));
 			}
+			taskCount++;
 			
             try {
-				URI      uri = task.uri;
-				HttpHost target = new HttpHost(uri.getHost());
+				HttpHost target = HttpHost.create(task.uri);
 				
-	            ClassicHttpRequest request = new BasicClassicHttpRequest(Method.GET, uri);
+	            ClassicHttpRequest request = new BasicClassicHttpRequest(Method.GET, task.uri);
 	            headerList.forEach(o -> request.addHeader(o));
 	            
-	            MyResponseHandler responseHandler = new MyResponseHandler(task);
+	            HttpClientResponseHandler<Result> responseHandler = new HttpClientResponseHandler<Result>() {
+	        		@Override
+	        		public Result handleResponse(ClassicHttpResponse response) throws HttpException, IOException {
+	        			return new Result(task, response);
+	        		}
+	            };
 
 	            Result result = requester.execute(target, request, Timeout.ofSeconds(5), coreContext, responseHandler);
 	            
