@@ -60,27 +60,36 @@ public final class TaskProcessor implements Runnable {
 	public static void setThreadCount(int newValue) {
 		threadCount = newValue;
 	}
-	public static void processTasks() {
+	
+	private static ExecutorService executor = null;
+	public static void startTask() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.setHttpAsyncRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
 		}
 		
-		try {
-			logger.info("threadCount {}", threadCount);
-			ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-			
-			for(int i = 0; i < threadCount; i++) {
-				TaskProcessor taskProcessor = new TaskProcessor();
-				executor.execute(taskProcessor);
-			}
+		logger.info("threadCount {}", threadCount);
+		executor = Executors.newFixedThreadPool(threadCount);
+		
+		for(int i = 0; i < threadCount; i++) {
+			TaskProcessor taskProcessor = new TaskProcessor();
+			executor.execute(taskProcessor);
+		}
 
-			executor.shutdown();
+		executor.shutdown();
+	}
+	public static void waitTask() {
+		try {
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
 		} catch (InterruptedException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.warn("{} {}", exceptionName, e);
 		}
+		executor = null;
+	}
+	public static void startAndWaitTask() {
+		startTask();
+		waitTask();
 	}
 	
 	@Override
