@@ -6,7 +6,7 @@ import org.apache.hc.core5.http2.HttpVersionPolicy;
 public class RequesterBuilder {
 	int maxTotal                    = 50;
 	int defaultMaxPerRoute          = 20;
-	int soTimeout                   = 5;
+	int soTimeout                   = 10; // 10 seconds
 	HttpVersionPolicy versionPolicy = HttpVersionPolicy.NEGOTIATE;
 	
     private RequesterBuilder() {
