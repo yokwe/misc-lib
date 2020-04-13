@@ -28,7 +28,7 @@ public class Result {
 		charsetMap.put("application/json", StandardCharsets.UTF_8);
 	}
 	
-	public final Task                          task;
+	public final Task         task;
 	
 	// Derived fields from message
 	public final HttpResponse head;
