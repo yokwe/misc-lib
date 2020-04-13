@@ -2,8 +2,8 @@ package yokwe.util.http;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,10 +50,10 @@ public final class TaskProcessor implements Runnable {
         
 		requester = H2RequesterBootstrap.bootstrap()
 				.setH2Config(h2Config)
+                .setIOReactorConfig(ioReactorConfig)
                 .setMaxTotal(requesterBuilder.maxTotal)
                 .setDefaultMaxPerRoute(requesterBuilder.defaultMaxPerRoute)
                 .setVersionPolicy(requesterBuilder.versionPolicy)
-                .setIOReactorConfig(ioReactorConfig)
                 .create();
 		
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -63,9 +63,11 @@ public final class TaskProcessor implements Runnable {
                 requester.close(CloseMode.GRACEFUL);
            }
         });
+        
+        requester.start(); // Need to start
 	}
 	
-	private static final ConcurrentLinkedQueue<Task> taskQueue = new ConcurrentLinkedQueue<Task>();
+	private static final LinkedList<Task> taskQueue = new LinkedList<Task>();
 	public static void addTask(Task task) {
 		taskQueue.add(task);
 	}
@@ -86,18 +88,20 @@ public final class TaskProcessor implements Runnable {
 		threadCount = newValue;
 	}
 	
-	private static ExecutorService executor = null;
+	private static ExecutorService executor      = null;
+	private static int 		       taskQueueSize = 0;
 	public static void startTask() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.setHttpAsyncRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
 		}
+		taskQueueSize = taskQueue.size();
 		
 		logger.info("threadCount {}", threadCount);
 		executor = Executors.newFixedThreadPool(threadCount);
 		
 		for(int i = 0; i < threadCount; i++) {
-			TaskProcessor taskProcessor = new TaskProcessor();
+			TaskProcessor taskProcessor = new TaskProcessor(i);
 			executor.execute(taskProcessor);
 		}
 
@@ -117,17 +121,32 @@ public final class TaskProcessor implements Runnable {
 		waitTask();
 	}
 	
+	private final int no;
+	public TaskProcessor(int no) {
+		this.no = no;
+	}
+	
 	@Override
 	public void run() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.startRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.startRequester()");
 		}
+		Thread.currentThread().setName(String.format("TASK-%02d", no));
 
 		for(;;) {
-			Task task = taskQueue.poll();
+			final int  count;
+			final Task task;
+			synchronized (taskQueue) {
+				count = taskQueueSize - taskQueue.size();
+				task  = taskQueue.poll();
+			}
 			if (task == null) break;
 			
+			if ((count % 100) == 0) {
+				logger.info("{}", String.format("%4d / %4d", count, taskQueueSize));
+			}
+
             try {
 				URI      uri = task.uri;
 				HttpHost target = new HttpHost(uri.getHost());
@@ -145,8 +164,6 @@ public final class TaskProcessor implements Runnable {
 						pathString = path;
 					}
 				}
-				
-//					logger.info("pathString {}", pathString);
 				
 	            HttpRequest request = new BasicHttpRequest(Method.GET, target, pathString);
 	            headerList.forEach(o -> request.addHeader(o));

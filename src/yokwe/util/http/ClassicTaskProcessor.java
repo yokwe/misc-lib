@@ -3,8 +3,8 @@ package yokwe.util.http;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +53,7 @@ public final class ClassicTaskProcessor implements Runnable {
         });
 	}
 	
-	private static final ConcurrentLinkedQueue<Task> taskQueue = new ConcurrentLinkedQueue<Task>();
+	private static final LinkedList<Task> taskQueue = new LinkedList<Task>();
 	public static void addTask(Task task) {
 		taskQueue.add(task);
 	}
@@ -74,18 +74,20 @@ public final class ClassicTaskProcessor implements Runnable {
 		threadCount = newValue;
 	}
 	
-	private static ExecutorService executor = null;
+	private static ExecutorService executor      = null;
+	private static int 		       taskQueueSize = 0;
 	public static void startTask() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.setHttpAsyncRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
 		}
+		taskQueueSize = taskQueue.size();
 		
 		logger.info("threadCount {}", threadCount);
 		executor = Executors.newFixedThreadPool(threadCount);
 		
 		for(int i = 0; i < threadCount; i++) {
-			ClassicTaskProcessor taskProcessor = new ClassicTaskProcessor();
+			ClassicTaskProcessor taskProcessor = new ClassicTaskProcessor(i);
 			executor.execute(taskProcessor);
 		}
 
@@ -107,10 +109,10 @@ public final class ClassicTaskProcessor implements Runnable {
 	
 	
 	
-	public static class MyResponseHander implements HttpClientResponseHandler<Result> {
+	public static class MyResponseHandler implements HttpClientResponseHandler<Result> {
 		public final Task task;
 		
-		public MyResponseHander(Task task) {
+		public MyResponseHandler(Task task) {
 			this.task = task;
 		}
 		
@@ -120,6 +122,10 @@ public final class ClassicTaskProcessor implements Runnable {
 		}
 	}
 
+	private final int no;
+	public ClassicTaskProcessor(int no) {
+		this.no = no;
+	}
 	
 	@Override
 	public void run() {
@@ -127,12 +133,23 @@ public final class ClassicTaskProcessor implements Runnable {
 			logger.error("Need to call TaskProcessor.startRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.startRequester()");
 		}
+		
+		Thread.currentThread().setName(String.format("TASK-%02d", no));
 
         final HttpCoreContext coreContext = HttpCoreContext.create();
         
 		for(;;) {
-			Task task = taskQueue.poll();
+			final int  count;
+			final Task task;
+			synchronized (taskQueue) {
+				count = taskQueueSize - taskQueue.size();
+				task  = taskQueue.poll();
+			}
 			if (task == null) break;
+			
+			if ((count % 100) == 0) {
+				logger.info("{}", String.format("%4d / %4d", count, taskQueueSize));
+			}
 			
             try {
 				URI      uri = task.uri;
@@ -141,7 +158,7 @@ public final class ClassicTaskProcessor implements Runnable {
 	            ClassicHttpRequest request = new BasicClassicHttpRequest(Method.GET, uri);
 	            headerList.forEach(o -> request.addHeader(o));
 	            
-	            MyResponseHander responseHandler = new MyResponseHander(task);
+	            MyResponseHandler responseHandler = new MyResponseHandler(task);
 
 	            Result result = requester.execute(target, request, Timeout.ofSeconds(5), coreContext, responseHandler);
 	            
