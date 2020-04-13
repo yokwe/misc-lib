@@ -1,9 +1,9 @@
 package yokwe.util.http;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -88,8 +88,11 @@ public final class TaskProcessor implements Runnable {
 		threadCount = newValue;
 	}
 	
-	private static ExecutorService executor      = null;
-	private static int 		       taskQueueSize = 0;
+	private static ExecutorService executor           = null;
+	private static CountDownLatch  stopLatch          = null;
+	private static int 		       taskQueueSize      = 0;
+	private static TaskProcessor[] taskProcessorArray = null;
+	
 	public static void startTask() {
 		if (requester == null) {
 			logger.error("Need to call TaskProcessor.setHttpAsyncRequester()");
@@ -100,21 +103,36 @@ public final class TaskProcessor implements Runnable {
 		logger.info("threadCount {}", threadCount);
 		executor = Executors.newFixedThreadPool(threadCount);
 		
+		stopLatch = new CountDownLatch(taskQueueSize);
+
+		taskProcessorArray = new TaskProcessor[threadCount];
 		for(int i = 0; i < threadCount; i++) {
 			TaskProcessor taskProcessor = new TaskProcessor(i);
+			taskProcessorArray[i] = taskProcessor;
 			executor.execute(taskProcessor);
 		}
-
-		executor.shutdown();
 	}
 	public static void waitTask() {
 		try {
-			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+			stopLatch.await();
+			executor.shutdown();
+			executor.awaitTermination(1, TimeUnit.DAYS);
 		} catch (InterruptedException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.warn("{} {}", exceptionName, e);
 		}
 		executor = null;
+		
+		for(int i = 0; i < threadCount;) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format("TASK-%02d ", i));
+			for(int j = 0; j < 10; j++) {
+				if (i < threadCount) {
+					sb.append(String.format("%4d", taskProcessorArray[i++].taskCount));
+				}
+			}
+			logger.info("{}", sb.toString());
+		}
 	}
 	public static void startAndWaitTask() {
 		startTask();
@@ -122,8 +140,10 @@ public final class TaskProcessor implements Runnable {
 	}
 	
 	private final int no;
+	private       int taskCount;
 	public TaskProcessor(int no) {
-		this.no = no;
+		this.no        = no;
+		this.taskCount = 0;
 	}
 	
 	@Override
@@ -143,34 +163,48 @@ public final class TaskProcessor implements Runnable {
 			}
 			if (task == null) break;
 			
-			if ((count % 100) == 0) {
+			if ((count % 1000) == 0) {
 				logger.info("{}", String.format("%4d / %4d", count, taskQueueSize));
 			}
+			taskCount++;
 
             try {
-				URI      uri = task.uri;
-				HttpHost target = new HttpHost(uri.getHost());
-				
+				HttpHost target = HttpHost.create(task.uri);
 				AsyncClientEndpoint clientEndpoint = requester.connect(target, Timeout.ofSeconds(30)).get();
 				
-				String pathString;
-				{
-					String path  = uri.getPath();
-					String query = uri.getQuery();
-					
-					if (query != null) {
-						pathString = String.format("%s?%s", path, query);
-					} else {
-						pathString = path;
-					}
-				}
-				
-	            HttpRequest request = new BasicHttpRequest(Method.GET, target, pathString);
+	            HttpRequest request = new BasicHttpRequest(Method.GET, task.uri);
 	            headerList.forEach(o -> request.addHeader(o));
 	            
 	            AsyncRequestProducer                                 requestProducer  = new BasicRequestProducer(request, null);
 	            AsyncResponseConsumer<Message<HttpResponse, byte[]>> responseConsumer = new BasicResponseConsumer<>(new BasicAsyncEntityConsumer());
-	            FutureCallback<Message<HttpResponse, byte[]>>        futureCallback   = new MyFutureCallback(clientEndpoint, task);
+	            FutureCallback<Message<HttpResponse, byte[]>>        futureCallback   = new FutureCallback<Message<HttpResponse, byte[]>>() {
+	        	    @Override
+	        	    public void completed(final Message<HttpResponse, byte[]> message) {
+	        	        clientEndpoint.releaseAndReuse();
+	        	        
+	        	        Result result = new Result(task, message);
+	        	        task.beforeProdess(task);
+	        	        task.process(result);
+	        	        task.afterProcess(task);
+	        	        stopLatch.countDown();
+	        	    }
+
+	        	    @Override
+	        	    public void failed(final Exception e) {
+	        	        clientEndpoint.releaseAndDiscard();
+	        	        logger.warn("failed {}", task.uri);
+	        			String exceptionName = e.getClass().getSimpleName();
+	        			logger.warn("{} {}", exceptionName, e);
+	        	        stopLatch.countDown();
+	        	    }
+
+	        	    @Override
+	        	    public void cancelled() {
+	        	        clientEndpoint.releaseAndDiscard();
+	        	        logger.warn("cancelled {}", task.uri);
+	        	        stopLatch.countDown();
+	        	    }
+	            };
 
 	            clientEndpoint.execute(requestProducer, responseConsumer, futureCallback);
 			} catch (InterruptedException | ExecutionException e) {
