@@ -24,7 +24,6 @@ public class Result {
 
 	public static Map<String, Charset> charsetMap = new TreeMap<>();
 	static {
-		charsetMap.put("application/xml",  StandardCharsets.UTF_8);
 		charsetMap.put("application/json", StandardCharsets.UTF_8);
 	}
 	
@@ -59,13 +58,8 @@ public class Result {
 					if (charsetMap.containsKey(mimeType)) {
 						this.charset = charsetMap.get(mimeType);
 					} else {
-						if (mimeType.startsWith("text/")) {
-							logger.warn("assume charset UTF_8 for contet type of text/*");
-							this.charset = StandardCharsets.UTF_8;
-						} else {
-//								logger.warn("assume charset null for contet type of {}!", mimeType);
-							this.charset = null;
-						}
+						// don't assume charset
+						this.charset = null;
 					}
 				} else {
 					this.charset = charset;
