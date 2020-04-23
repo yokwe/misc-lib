@@ -42,6 +42,10 @@ import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
 
+/**
+ * @deprecate "Use http.Download instead"
+ */
+@Deprecated
 public class DownloadUtil {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DownloadUtil.class);
 
@@ -161,6 +165,7 @@ public class DownloadUtil {
 			super(url, action, ContentMode.AUTO, file);
 		}
 	}
+	@Deprecated
 	public static class StringTarget extends AbstractTarget {
 		private final Consumer<StringTarget> action;
 		private final StringWriter           writer;
