@@ -4,6 +4,10 @@ import java.io.PrintWriter;
 
 import yokwe.UnexpectedException;
 
+/**
+ * @deprecate "Use AutoIndentPrintWriter instead"
+ */
+@Deprecated
 public class IndentPrintWriter implements AutoCloseable {
 	private static final String INDENT = "    ";
 
