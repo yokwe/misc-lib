@@ -94,7 +94,7 @@ public final class Download {
 	private int 		    taskQueueSize      = 0;
 	private Worker[]        workerArray = null;
 	
-	public void startTask() {
+	public void startProcessTask() {
 		if (requester == null) {
 			logger.error("Need to call setHttpAsyncRequester()");
 			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
@@ -108,12 +108,12 @@ public final class Download {
 
 		workerArray = new Worker[threadCount];
 		for(int i = 0; i < threadCount; i++) {
-			Worker workder = new Worker(String.format("WORK-%02d", i));
+			Worker workder = new Worker(String.format("WORKER-%02d", i));
 			workerArray[i] = workder;
 			executor.execute(workder);
 		}
 	}
-	public void waitTask() {
+	public void waitProcessTask() {
 		try {
 			stopLatch.await();
 			executor.shutdown();
@@ -121,12 +121,18 @@ public final class Download {
 		} catch (InterruptedException e) {
 			String exceptionName = e.getClass().getSimpleName();
 			logger.warn("{} {}", exceptionName, e);
+		} finally {
+			executor      = null;
+			stopLatch     = null;
+			taskQueueSize = 0;
 		}
-		executor = null;
 		
+	}
+	public void showRunCount() {
+		logger.info("== Worker runCount");
 		for(int i = 0; i < threadCount;) {
 			StringBuilder sb = new StringBuilder();
-			sb.append(String.format("TASK-%02d ", i));
+			sb.append(String.format("%s ", workerArray[i].name));
 			for(int j = 0; j < 10; j++) {
 				if (i < threadCount) {
 					sb.append(String.format("%4d", workerArray[i++].runCount));
@@ -135,9 +141,9 @@ public final class Download {
 			logger.info("{}", sb.toString());
 		}
 	}
-	public void startAndWaitTask() {
-		startTask();
-		waitTask();
+	public void startAndWait() {
+		startProcessTask();
+		waitProcessTask();
 	}
 	
 	private class Worker implements Runnable {
