@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 import yokwe.UnexpectedException;
 
 /**
- * @deprecate "Use http.Download instead"
+ * @deprecate "Use yokew.util.http.Download instead"
  */
 @Deprecated
 public class DownloadUtil {
