@@ -183,9 +183,7 @@ public final class TaskProcessor implements Runnable {
 	        	        clientEndpoint.releaseAndReuse();
 	        	        
 	        	        Result result = new Result(task, message);
-	        	        task.beforeProdess(task);
 	        	        task.process(result);
-	        	        task.afterProcess(task);
 	        	        stopLatch.countDown();
 	        	    }
 

@@ -110,7 +110,10 @@ public final class Download {
 		for(int i = 0; i < threadCount; i++) {
 			Worker workder = new Worker(String.format("WORKER-%02d", i));
 			workerArray[i] = workder;
-			executor.execute(workder);
+		}
+		
+		for(Worker worker: workerArray) {
+			executor.execute(worker);
 		}
 	}
 	public void waitProcessTask() {
@@ -126,7 +129,6 @@ public final class Download {
 			stopLatch     = null;
 			taskQueueSize = 0;
 		}
-		
 	}
 	public void showRunCount() {
 		logger.info("== Worker runCount");
@@ -191,9 +193,7 @@ public final class Download {
 		        	        clientEndpoint.releaseAndReuse();
 		        	        
 		        	        Result result = new Result(task, message);
-		        	        task.beforeProdess(task);
 		        	        task.process(result);
-		        	        task.afterProcess(task);
 		        	        stopLatch.countDown();
 		        	    }
 

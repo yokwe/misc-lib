@@ -3,7 +3,7 @@ package yokwe.util.http;
 import java.net.URI;
 import java.util.function.Consumer;
 
-public abstract class Task {
+public class Task {
 	public final URI uri;
 	public final Consumer<Result> consumer;
 	
@@ -11,10 +11,11 @@ public abstract class Task {
 		this.uri      = uri;
 		this.consumer = consumer;
 	}
+	public Task(String uriString, Consumer<Result> consumer) {
+		this(URI.create(uriString), consumer);
+	}
 	
-	public abstract void beforeProdess(Task task);
-	public          void process(Result result) {
+	public void process(Result result) {
 		consumer.accept(result);
 	}
-	public abstract void afterProcess(Task task);
 }

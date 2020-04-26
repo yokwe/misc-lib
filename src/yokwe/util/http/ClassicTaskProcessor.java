@@ -168,9 +168,7 @@ public final class ClassicTaskProcessor implements Runnable {
 
 	            Result result = requester.execute(target, request, Timeout.ofSeconds(5), coreContext, responseHandler);
 	            
-	            task.beforeProdess(task);
 	            task.process(result);
-	            task.afterProcess(task);
 
 			} catch (HttpException | IOException e) {
 				String exceptionName = e.getClass().getSimpleName();
