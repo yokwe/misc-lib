@@ -43,7 +43,7 @@ public final class ClassicDownload {
                 .setMaxTotal(requesterBuilder.maxTotal)
                 .setDefaultMaxPerRoute(requesterBuilder.defaultMaxPerRoute)
                 .create();
-
+		
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -79,8 +79,9 @@ public final class ClassicDownload {
 	private Worker[]        workerArray   = null;
 	public void startProcessTask() {
 		if (requester == null) {
-			logger.error("Need to call setHttpAsyncRequester()");
-			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
+			logger.warn("Set requester using default value of RequestBuilder");
+			// Set requester using default value of RequestBuilder
+			setRequesterBuilder(RequesterBuilder.custom());
 		}
 		taskQueueSize = taskQueue.size();
 		
@@ -138,8 +139,7 @@ public final class ClassicDownload {
 		@Override
 		public void run() {
 			if (requester == null) {
-				logger.error("Need to call setRequesterBuilder()");
-				throw new UnexpectedException("Need to call setRequesterBuilder()");
+				throw new UnexpectedException("requester == null");
 			}
 			Thread.currentThread().setName(name);
 
@@ -173,7 +173,6 @@ public final class ClassicDownload {
 		            };
 
 		            Result result = requester.execute(target, request, Timeout.ofSeconds(5), coreContext, responseHandler);
-		            
 		            task.process(result);
 
 				} catch (HttpException | IOException e) {

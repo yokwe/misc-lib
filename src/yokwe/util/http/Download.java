@@ -89,15 +89,16 @@ public final class Download {
 		threadCount = newValue;
 	}
 	
-	private ExecutorService executor           = null;
-	private CountDownLatch  stopLatch          = null;
-	private int 		    taskQueueSize      = 0;
-	private Worker[]        workerArray = null;
+	private ExecutorService executor      = null;
+	private int 		    taskQueueSize = 0;
+	private Worker[]        workerArray   = null;
+	private CountDownLatch  stopLatch     = null;
 	
 	public void startProcessTask() {
 		if (requester == null) {
-			logger.error("Need to call setHttpAsyncRequester()");
-			throw new UnexpectedException("Need to call TaskProcessor.setHttpAsyncRequester()");
+			logger.warn("Set requester using default value of RequestBuilder");
+			// Set requester using default value of RequestBuilder
+			setRequesterBuilder(RequesterBuilder.custom());
 		}
 		taskQueueSize = taskQueue.size();
 		
@@ -159,8 +160,7 @@ public final class Download {
 		@Override
 		public void run() {
 			if (requester == null) {
-				logger.error("Need to call setRequesterBuilder()");
-				throw new UnexpectedException("Need to call setRequesterBuilder()");
+				throw new UnexpectedException("requester == null");
 			}
 			Thread.currentThread().setName(name);
 
