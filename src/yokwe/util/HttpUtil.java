@@ -28,6 +28,11 @@ import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
 
+/**
+ * @deprecated Use yokwe.util.http.HttpUtil
+ */
+
+@Deprecated
 public class HttpUtil {
 	private static final Logger logger = LoggerFactory.getLogger(HttpUtil.class);
 	
