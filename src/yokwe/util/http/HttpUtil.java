@@ -1,5 +1,6 @@
 package yokwe.util.http;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
@@ -14,18 +15,16 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.Method;
 import org.apache.hc.core5.http.ProtocolVersion;
 import org.apache.hc.core5.http.impl.bootstrap.HttpRequester;
 import org.apache.hc.core5.http.impl.bootstrap.RequesterBootstrap;
-import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.SocketConfig;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
 import org.apache.hc.core5.http.protocol.HttpCoreContext;
 import org.apache.hc.core5.io.CloseMode;
@@ -99,20 +98,23 @@ public class HttpUtil {
 	public static class Result {
 		public final String              url;
 		public final String              result;
+		public final byte[]              rawData;
 		public final Map<String, String> headerMap;
 		public final String              timestamp;
 		public final String              path;
-		public final byte[]              rawData;
 		
-		public final ClassicHttpResponse response;
+		public final HttpResponse        response;
 		public final int                 code;
 		public final String              reasonPhrase;
 		public final ProtocolVersion     version;
 		
 		public Result (Context context, String url, String result, byte[] rawData,
-				ClassicHttpResponse response) {
+				HttpResponse response) {
 			this.url       = url;
 			this.result    = result;
+			this.rawData   = rawData;
+			this.headerMap    = new TreeMap<>();
+			Arrays.asList(response.getHeaders()).stream().forEach(o -> this.headerMap.put(o.getName(), o.getValue()));
 			this.timestamp = LocalDateTime.now(ZoneId.systemDefault()).format(DATE_TIME_FORMATTER);
 			
 			if (context.trace) {
@@ -127,14 +129,15 @@ public class HttpUtil {
 				this.path = null;
 			}
 			
-			this.rawData = rawData;
-			
 			this.response     = response;
 			this.code         = response.getCode();
 			this.reasonPhrase = response.getReasonPhrase();
 			this.version      = response.getVersion();
-			this.headerMap    = new TreeMap<>();
-			Arrays.asList(response.getHeaders()).stream().forEach(o -> this.headerMap.put(o.getName(), o.getValue()));
+		}
+		
+		@Override
+		public String toString() {
+			return String.format("{%s %s %d %s %s %s %d", timestamp, url, code, reasonPhrase, version, result, rawData);
 		}
 	}
 	
@@ -180,24 +183,41 @@ public class HttpUtil {
 		return this;
 	}
 	
-	private static Charset getCharset(ClassicHttpResponse response, Charset defaultCharset) {
-		Charset ret = null;
-		{
-			// Take charset from mime header "Content-Type"
-			if (response.containsHeader("Content-Type")) {
-				String contentTypeString = response.getFirstHeader("Content-Type").getValue();
-				ContentType contentType = ContentType.parse(contentTypeString);
-				ret = contentType.getCharset();
-			}
-			// If no charset in Content-Type, use charset in context
-			if (ret == null) {
-				ret = defaultCharset;
-			}
-		}
+	private static class MyResponse {
+		HttpResponse response;
+		Charset      charset;
+		byte[]       content;
 		
-		return ret;
-	}
+		MyResponse(ClassicHttpResponse response) {
+			this.response = response;
+			
+			HttpEntity entity = response.getEntity();
+			if (entity == null) {
+				charset = null;
+				content = null;
+			} else {
+				String charsetName = entity.getContentEncoding();
+				if (charsetName == null) {
+					this.charset = null;
+				} else {
+					this.charset = Charset.forName(charsetName);
+				}
 
+				int len = (int)entity.getContentLength();
+				ByteArrayOutputStream baos = new ByteArrayOutputStream(len);
+				try {
+					entity.writeTo(baos);
+					content = baos.toByteArray();
+				} catch (IOException e) {
+					String exceptionName = e.getClass().getSimpleName();
+					logger.error("{} {}", exceptionName, e);
+					throw new UnexpectedException(exceptionName, e);
+				}
+			}
+			
+		}
+	}
+	
 	public Result download(String url) {
 		URI                uri     = URI.create(url);
 		HttpHost           target  = HttpHost.create(uri);
@@ -216,18 +236,13 @@ public class HttpUtil {
 			request.setHeader("Connection", context.connection);
 		}
 
-        HttpClientResponseHandler<ClassicHttpResponse> responseHandler = new HttpClientResponseHandler<ClassicHttpResponse>() {
-    		@Override
-    		public ClassicHttpResponse handleResponse(ClassicHttpResponse response) throws HttpException, IOException {
-    			return response;
-    		}
-        };
-        
 		int retryCount = 0;
 		for(;;) {
-			try (ClassicHttpResponse response = requester.execute(target, request, Timeout.ofSeconds(5), httpContext, responseHandler)) {
-		        final int    code         = response.getCode();
-		        final String reasonPhrase = response.getReasonPhrase();
+			try {
+				MyResponse   myResponse   = requester.execute(target, request, Timeout.ofSeconds(5), httpContext, o -> new MyResponse(o));
+				HttpResponse response     = myResponse.response;
+		        int          code         = response.getCode();
+		        String       reasonPhrase = response.getReasonPhrase();
 		        
 				if (code == 429) { // 429 Too Many Requests
 					if (retryCount < 10) {
@@ -248,19 +263,7 @@ public class HttpUtil {
 					return null;
 				}
 		        if (code == HttpStatus.SC_OK) {
-	    			byte[] rawData;
-	    			{
-						HttpEntity entity = response.getEntity();
-						if (entity == null) {
-							rawData = null;
-						} else {
-							try {
-								rawData = EntityUtils.toByteArray(entity);
-							} catch (IOException e) {
-								rawData = null;
-							}
-						}
-					}
+	    			byte[] rawData = myResponse.content;
 					
 	    			final String result;
 					if (context.rawData) {
@@ -269,7 +272,7 @@ public class HttpUtil {
 						if (rawData == null) {
 							result = null;
 						} else {
-							Charset charset = getCharset(response, context.charset);
+							Charset charset = myResponse.charset == null ? context.charset : myResponse.charset;
 							result = new String(rawData, charset);
 						}
 					}
@@ -287,15 +290,12 @@ public class HttpUtil {
 				logger.error("url {}", url);
 				logger.error("code {}", code);
 				{
-					HttpEntity entity = response.getEntity();
-					if (entity != null) {
-						if (context.rawData) {
-							logger.error("entity RAW_DATA");
-						} else {
-							byte[]  rawData = EntityUtils.toByteArray(entity);
-							Charset charset = getCharset(response, context.charset);
-					    	logger.error("entity  {}", new String(rawData, charset));
-						}
+					if (context.rawData) {
+						logger.error("entity RAW_DATA");
+					} else {
+		    			byte[]  rawData = myResponse.content;
+						Charset charset = myResponse.charset == null ? context.charset : myResponse.charset;
+				    	logger.error("entity  {}", new String(rawData, charset));
 					}
 				}
 				throw new UnexpectedException("download");
