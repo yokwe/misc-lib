@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
 
-public final class ClassicDownload {
-	static final Logger logger = LoggerFactory.getLogger(ClassicDownload.class);
+public final class DownloadSync implements Download {
+	static final Logger logger = LoggerFactory.getLogger(DownloadSync.class);
 
 	private HttpRequester requester = null;
 	
