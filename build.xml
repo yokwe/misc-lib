@@ -12,7 +12,7 @@
 		<fileset dir="${dir.ext.jar}">
 			<include name="*.jar" />
 		</fileset>
-                <fileset dir="${dir.libreoffice}/classes">
+        <fileset dir="${dir.libreoffice}/classes">
                         <include name="unoloader.jar" />
                         <include name="unoil.jar" />
                         <include name="juh.jar" />
