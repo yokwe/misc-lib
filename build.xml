@@ -6,13 +6,13 @@
 	<property name="dir.build.bin" location="${dir.build}/bin" />
 	<property name="dir.build.jar" location="${dir.build}/jar" />
 
-	<property name="dir.libreoffice.jar" location="/usr/lib/libreoffice/program/classes" />
+        <property name="dir.libreoffice" location="/usr/lib/libreoffice/program" />
 	
 	<path id="ext.jar">
 		<fileset dir="${dir.ext.jar}">
 			<include name="*.jar" />
 		</fileset>
-                <fileset dir="${dir.libreoffice.jar}">
+                <fileset dir="${dir.libreoffice}/classes">
                         <include name="unoloader.jar" />
                         <include name="unoil.jar" />
                         <include name="juh.jar" />
