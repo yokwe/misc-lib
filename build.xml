@@ -6,7 +6,7 @@
 	<property name="dir.build.bin" location="${dir.build}/bin" />
 	<property name="dir.build.jar" location="${dir.build}/jar" />
 
-        <property name="dir.libreoffice" location="/usr/lib/libreoffice/program" />
+    <property name="dir.libreoffice" location="/usr/lib/libreoffice/program" />
 	
 	<path id="ext.jar">
 		<fileset dir="${dir.ext.jar}">
