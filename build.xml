@@ -13,12 +13,12 @@
 			<include name="*.jar" />
 		</fileset>
         <fileset dir="${dir.libreoffice}/classes">
-                        <include name="unoloader.jar" />
-                        <include name="unoil.jar" />
-                        <include name="juh.jar" />
-                        <include name="jurt.jar" />
-                        <include name="ridl.jar" />
-                </fileset>
+            <include name="unoloader.jar" />
+            <include name="unoil.jar" />
+            <include name="juh.jar" />
+            <include name="jurt.jar" />
+            <include name="ridl.jar" />
+        </fileset>
 	</path>
 	
 	<property name="jar.misc-lib" location="${dir.build.jar}/misc-lib.jar" />
