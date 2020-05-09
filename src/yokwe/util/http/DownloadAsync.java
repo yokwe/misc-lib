@@ -9,6 +9,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLException;
+
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpHost;
@@ -23,12 +26,18 @@ import org.apache.hc.core5.http.nio.AsyncClientEndpoint;
 import org.apache.hc.core5.http.nio.AsyncRequestProducer;
 import org.apache.hc.core5.http.nio.AsyncResponseConsumer;
 import org.apache.hc.core5.http.nio.entity.BasicAsyncEntityConsumer;
+import org.apache.hc.core5.http.nio.ssl.TlsStrategy;
 import org.apache.hc.core5.http.nio.support.BasicRequestProducer;
 import org.apache.hc.core5.http.nio.support.BasicResponseConsumer;
 import org.apache.hc.core5.http2.config.H2Config;
 import org.apache.hc.core5.http2.impl.nio.bootstrap.H2RequesterBootstrap;
+import org.apache.hc.core5.http2.ssl.H2ClientTlsStrategy;
 import org.apache.hc.core5.io.CloseMode;
+import org.apache.hc.core5.net.NamedEndpoint;
 import org.apache.hc.core5.reactor.IOReactorConfig;
+import org.apache.hc.core5.reactor.ssl.SSLSessionVerifier;
+import org.apache.hc.core5.reactor.ssl.TlsDetails;
+import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,12 +58,22 @@ public final class DownloadAsync implements Download {
         		.setSoTimeout(requesterBuilder.soTimeout, TimeUnit.SECONDS)
         		.build();
         
+        TlsStrategy tlsStrategy = new H2ClientTlsStrategy(SSLContexts.createSystemDefault(), new SSLSessionVerifier() {
+            @Override
+            public TlsDetails verify(final NamedEndpoint endpoint, final SSLEngine sslEngine) throws SSLException {
+                // IMPORTANT uncomment the following line when running Java 9 or older
+                // in order to avoid the illegal reflective access operation warning
+            	return new TlsDetails(sslEngine.getSession(), sslEngine.getApplicationProtocol());
+            }
+        });
+        
 		requester = H2RequesterBootstrap.bootstrap()
 				.setH2Config(h2Config)
                 .setIOReactorConfig(ioReactorConfig)
                 .setMaxTotal(requesterBuilder.maxTotal)
                 .setDefaultMaxPerRoute(requesterBuilder.defaultMaxPerRoute)
                 .setVersionPolicy(requesterBuilder.versionPolicy)
+                .setTlsStrategy(tlsStrategy)
                 .create();
 		
         Runtime.getRuntime().addShutdownHook(new Thread() {
