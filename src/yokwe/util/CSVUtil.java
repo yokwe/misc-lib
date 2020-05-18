@@ -430,7 +430,8 @@ public class CSVUtil {
 				@SuppressWarnings("unchecked")
 				Class<E> clazz = (Class<E>)classInfo.clazz;
 				
-				E data = clazz.newInstance();
+				//E data = clazz.newInstance();
+				E data = clazz.getConstructor().newInstance();
 				
 				FieldInfo[] fieldInfos = classInfo.fieldInfos;
 				for(int i = 0; i < fieldInfos.length; i++) {
@@ -552,7 +553,7 @@ public class CSVUtil {
 				}
 				
 				return data;
-			} catch (InstantiationException | IllegalAccessException e) {
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);

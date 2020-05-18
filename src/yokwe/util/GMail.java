@@ -17,7 +17,6 @@ import javax.mail.internet.MimeMessage;
 import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
-import yokwe.util.FileUtil;
 import yokwe.util.json.JSONBase;
 
 public class GMail extends JSONBase {
