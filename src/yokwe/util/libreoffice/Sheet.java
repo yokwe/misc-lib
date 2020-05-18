@@ -486,8 +486,7 @@ public class Sheet {
 					final int rowSize  = rowRange.rowSize;
 
 					for(int i = 0; i < rowSize; i++) {
-						//E data = clazz.newInstance();
-						E data = clazz.getConstructor().newInstance();
+						E data = clazz.getDeclaredConstructor().newInstance();
 						for(ColumnInfo columnInfo: columnInfoList) {
 							Field   field     = columnInfo.field;
 							int     fieldType = columnInfo.fieldType;

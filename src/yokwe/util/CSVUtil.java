@@ -430,8 +430,7 @@ public class CSVUtil {
 				@SuppressWarnings("unchecked")
 				Class<E> clazz = (Class<E>)classInfo.clazz;
 				
-				//E data = clazz.newInstance();
-				E data = clazz.getConstructor().newInstance();
+				E data = clazz.getDeclaredConstructor().newInstance();
 				
 				FieldInfo[] fieldInfos = classInfo.fieldInfos;
 				for(int i = 0; i < fieldInfos.length; i++) {
