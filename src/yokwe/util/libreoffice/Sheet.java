@@ -5,6 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -485,7 +486,8 @@ public class Sheet {
 					final int rowSize  = rowRange.rowSize;
 
 					for(int i = 0; i < rowSize; i++) {
-						E data = clazz.newInstance();
+						//E data = clazz.newInstance();
+						E data = clazz.getConstructor().newInstance();
 						for(ColumnInfo columnInfo: columnInfoList) {
 							Field   field     = columnInfo.field;
 							int     fieldType = columnInfo.fieldType;
@@ -585,7 +587,7 @@ public class Sheet {
 				}
 				
 				return dataList;
-			} catch (IndexOutOfBoundsException | InstantiationException | IllegalAccessException e) {
+			} catch (IndexOutOfBoundsException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
 				logger.error("Exception {}", e.toString());
 				throw new UnexpectedException("Unexpected");
 			}
