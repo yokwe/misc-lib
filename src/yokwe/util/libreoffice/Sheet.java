@@ -390,6 +390,7 @@ public class Sheet {
 				final int rowEnd   = rowRange.rowEnd;
 				final int rowSize  = rowRange.rowSize;
 
+				// set number format to range of cell
 				for(ColumnInfo columnInfo: columnInfoList) {
 					// left top right bottom
 					XCellRange xCellRange = xSpreadsheet.getCellRangeByPosition(columnInfo.index, rowBegin, columnInfo.index, rowEnd);
@@ -398,14 +399,56 @@ public class Sheet {
 					if (columnInfo.numberFormat != null) {
 						SpreadSheet.setNumberFormat(xCellRange, columnInfo.numberFormat, xNumberFormats);
 					}
+				}
+				
+				// set data to cell
+				List<List<ColumnInfo>> listList = new ArrayList<>();
+				{
+					// find continuous ColumnInfo.idex and store them to list
+					List<ColumnInfo> list = new ArrayList<>();
+					int nextIndex = -1;
+					for(ColumnInfo e: columnInfoList) {
+						if (e.index == nextIndex || nextIndex == -1) {
+							list.add(e);
+							nextIndex = e.index + 1;
+						} else {
+							if (!list.isEmpty()) {
+								listList.add(list);
+								list.clear();
+							}
+							nextIndex = -1;
+						}
+					}
+					if (!list.isEmpty()) {
+						listList.add(list);
+					}
+				}
+				for(List<ColumnInfo> list: listList) {
+					int columnSize  = list.size();
+					int columnBegin = list.get(0).index;
+					int columnEnd   = columnBegin + columnSize - 1;
 					
-					// fill data
+					// Sanity check
+					for(int i = 0; i < columnSize; i++) {
+						if (list.get(i).index != (columnBegin + i)) {
+							logger.error("Unexpected index");
+							for(ColumnInfo ee: list) {
+								logger.error("  {}  {}", ee.index, ee.name);
+							}
+							throw new UnexpectedException("Unexpected index");
+						}
+					}
+					
+					// call setDataArray with data[rowSize][columnSize]
+					XCellRange     xCellRange     = xSpreadsheet.getCellRangeByPosition(columnBegin, rowBegin, columnEnd, rowEnd);
 					XCellRangeData xCellRangeData = UnoRuntime.queryInterface(XCellRangeData.class, xCellRange);
-					Object data[][] = new Object[rowSize][1]; // row column
+					Object data[][] = new Object[rowSize][columnSize]; // row column
 					for(int i = 0; i < rowSize; i++) {
-						String fillMapKey = (rowBegin + i) + "-" + columnInfo.index;
-						Object value = fillMap.get(fillMapKey);
-						data[i][0] = (value == null) ? "*NA*" : value;
+						for(int j = 0; j < columnSize; j++) {
+							String fillMapKey = (rowBegin + i) + "-" + (columnBegin + j);
+							Object value = fillMap.get(fillMapKey);
+							data[i][j] = (value == null) ? "*NA*" : value;
+						}
 					}
 					xCellRangeData.setDataArray(data);
 				}
