@@ -107,7 +107,15 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 			}
 		}
 
-		for(int i = 0; i < level; i++) out.print(INDENT);
+		// special handling for case and default
+		int adjustLevel = 0;
+		{
+			String s = string.trim();
+			if (s.startsWith("case " ))   adjustLevel = -1;
+			if (s.startsWith("default:")) adjustLevel = -1;
+		}
+		
+		for(int i = 0; i < (level + adjustLevel); i++) out.print(INDENT); 
 		out.println(string);
 		
 		// adjust level
