@@ -580,12 +580,16 @@ public class CSVUtil {
 		}
 		public List<E> file(File file) {
 			if (!file.exists()) return null;
+			if (file.length() == 0) return null;
 			try {
 				return file(new FileReader(file));
 			} catch (FileNotFoundException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
+			} catch (UnexpectedException e) {
+				logger.error("file {}", file.getPath());
+				throw e;
 			}
 		}
 		public List<E> file(String path) {
