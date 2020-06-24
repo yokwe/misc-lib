@@ -11,6 +11,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,13 +45,13 @@ public final class JSON {
 	
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)
-	public @interface JSONName {
+	public @interface Name {
 		String value();
 	}
 	
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)
-	public @interface IgnoreField {
+	public @interface Ignore {
 	}
 	
 	@Retention(RetentionPolicy.RUNTIME)
@@ -69,7 +70,7 @@ public final class JSON {
 		public final boolean  ignoreField;
 		
 		public final Map<String, Enum<?>> enumMap;
-		public final DateTimeFormatter dateTimeFormatter;
+		public final DateTimeFormatter    dateTimeFormatter;
 		
 		FieldInfo(Field field) {
 			this.field = field;
@@ -77,15 +78,15 @@ public final class JSON {
 			this.name  = field.getName();
 			this.clazz = field.getType();
 
-			// Use JSONName if exists.
-			JSONName jsonName = field.getDeclaredAnnotation(JSONName.class);
+			// Use json name if exists.
+			Name jsonName = field.getDeclaredAnnotation(Name.class);
 			this.jsonName = (jsonName == null) ? field.getName() : jsonName.value();
 			
 			Class<?> type = field.getType();
 			this.type     = type.getName();
 			this.isArray  = type.isArray();
 			
-			this.ignoreField = field.getDeclaredAnnotation(IgnoreField.class) != null;
+			this.ignoreField = field.getDeclaredAnnotation(Ignore.class) != null;
 			
 			DateTimeFormat dateTimeFormat = field.getDeclaredAnnotation(DateTimeFormat.class);
 			this.dateTimeFormatter = (dateTimeFormat == null) ? null : DateTimeFormatter.ofPattern(dateTimeFormat.value());
@@ -311,6 +312,9 @@ public final class JSON {
 			} else {
 				fieldInfo.field.set(object, LocalDateTime.parse(jsonString.getString()));
 			}
+			break;
+		case "java.math.BigDecimal":
+			fieldInfo.field.set(object, new BigDecimal(jsonString.getString()));
 			break;
 		default:
 			if (fieldInfo.enumMap != null) {
