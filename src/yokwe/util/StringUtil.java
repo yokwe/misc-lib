@@ -400,7 +400,12 @@ public class StringUtil {
 						}						
 						line.append("[").append(String.join(", ", arrayElement)).append("]");
 					} else {
-						line.append(toString(value));
+						if (fieldInfo.type.startsWith("java")) {
+							// Dont' dig into system class
+							line.append(value.toString());
+						} else {
+							line.append(toString(value));
+						}
 					}
 				}
 					break;
