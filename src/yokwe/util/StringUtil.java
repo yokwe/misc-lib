@@ -392,15 +392,15 @@ public class StringUtil {
 							Object element = Array.get(value, i);
 							if (element instanceof String) {
 								// Quote special character in string \ => \\  " => \"
-								String stringValue = element.toString().replace("\\", "\\\\").replace("\"", "\\\"");
+								String stringValue = toString(element).replace("\\", "\\\\").replace("\"", "\\\"");
 								arrayElement.add(String.format("\"%s\"", stringValue));
 							} else {
-								arrayElement.add(String.format("%s", element.toString()));
+								arrayElement.add(String.format("%s", toString(element)));
 							}
 						}						
 						line.append("[").append(String.join(", ", arrayElement)).append("]");
 					} else {
-						line.append(value.toString());
+						line.append(toString(value));
 					}
 				}
 					break;
