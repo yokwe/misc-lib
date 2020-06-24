@@ -382,8 +382,12 @@ public final class JSON {
 	// JsonObject
 	//
 	private static void setValue(Object object, FieldInfo fieldInfo, JsonObject jsonObject) throws IllegalArgumentException, IllegalAccessException, InstantiationException, InvocationTargetException, NoSuchMethodException, SecurityException {
-		Object fieldObject = fieldInfo.field.get(object);
+		ClassInfo classInfo = ClassInfo.get(fieldInfo.clazz);
+		
+		Object fieldObject = classInfo.construcor.newInstance();
 		setValue(fieldObject, jsonObject);
+		
+		fieldInfo.field.set(object, fieldObject);
 	}
 
 	//
