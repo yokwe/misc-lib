@@ -260,6 +260,7 @@ public class StringUtil {
 			final String name;
 			final String type;
 			final boolean isArray;
+			final boolean isEnum;
 			final TimeZone useTimeZone;
 
 			FieldInfo(Field field) {
@@ -269,6 +270,7 @@ public class StringUtil {
 				this.name    = field.getName();
 				this.type    = type.getName();
 				this.isArray = type.isArray();
+				this.isEnum  = type.isEnum();
 				
 				UseTimeZone useTimeZone = field.getDeclaredAnnotation(UseTimeZone.class);
 				if (useTimeZone != null) {
@@ -399,6 +401,8 @@ public class StringUtil {
 							}
 						}						
 						line.append("[").append(String.join(", ", arrayElement)).append("]");
+					} else if (fieldInfo.isEnum) {
+						line.append(value.toString());
 					} else {
 						if (fieldInfo.type.startsWith("java")) {
 							// Dont' dig into system class
