@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
+import yokwe.util.GenericInfo;
 
 public final class JSON {
 	static final Logger logger = LoggerFactory.getLogger(JSON.class);
@@ -131,7 +132,20 @@ public final class JSON {
 			try {
 				this.clazz      = clazz;
 				this.clazzName  = clazz.getName();
-				this.construcor = clazz.getDeclaredConstructor();
+				
+				{
+					Constructor<?> construcor = null;
+					
+					if (!clazz.isInterface()) {
+						try {
+							construcor = clazz.getDeclaredConstructor();
+						} catch(NoSuchMethodException | SecurityException e) {
+							logger.warn("Failed to get constructor  {}", clazzName);
+						}
+					}
+					
+					this.construcor = construcor;
+				}
 				
 				{
 					List<Field> fieldList = new ArrayList<>();
@@ -147,7 +161,7 @@ public final class JSON {
 				}
 				
 				this.fieldNameSet = Arrays.stream(fieldInfos).map(o -> o.jsonName).collect(Collectors.toSet());
-			} catch (NoSuchMethodException | SecurityException e) {
+			} catch (SecurityException e) {
 				String exceptionName = e.getClass().getSimpleName();
 				logger.error("{} {}", exceptionName, e);
 				throw new UnexpectedException(exceptionName, e);
@@ -388,10 +402,61 @@ public final class JSON {
 	private static void setValue(Object object, FieldInfo fieldInfo, JsonObject jsonObject) throws IllegalArgumentException, IllegalAccessException, InstantiationException, InvocationTargetException, NoSuchMethodException, SecurityException {
 		ClassInfo classInfo = ClassInfo.get(fieldInfo.clazz);
 		
-		Object fieldObject = classInfo.construcor.newInstance();
-		setValue(fieldObject, jsonObject);
-		
-		fieldInfo.field.set(object, fieldObject);
+		if (classInfo.clazzName.equals("java.util.Map")) {
+			GenericInfo genericInfo = new GenericInfo(fieldInfo.field);
+			if (genericInfo.classArguments.length != 2) {
+				logger.error("Unexptected genericInfo.classArguments.length {}", genericInfo.classArguments.length);
+				throw new UnexpectedException("Unexptected genericInfo.classArguments.length");
+			}
+			Class<?> mapKeyClass   = genericInfo.classArguments[0];
+			Class<?> mapValueClass = genericInfo.classArguments[1];
+
+			String mapKeyClassName   = mapKeyClass.getTypeName();
+			String mapValueClassName = mapValueClass.getTypeName();
+
+			if (!mapKeyClassName.equals("java.lang.String")) {
+				logger.error("Unexptected keyTypeName {}", mapKeyClassName);
+				throw new UnexpectedException("Unexptected keyTypeName");
+			}
+
+			if (mapValueClass.isPrimitive()) {
+				//
+				logger.error("Unexptected mapValueClass {}", mapValueClassName);
+				throw new UnexpectedException("Unexptected mapValueClass");
+			} else {
+				Map<String, Object> map = new TreeMap<>();
+				
+				for(String childKey: jsonObject.keySet()) {
+					JsonValue childValue = jsonObject.get(childKey);
+					ValueType childValueType = childValue.getValueType();
+					
+					switch(childValueType) {
+					case OBJECT:
+					{
+						JsonObject jsonObjectValue = jsonObject.getJsonObject(childKey);
+						
+						ClassInfo valueClassInfo = ClassInfo.get(mapValueClass);
+						Object value = valueClassInfo.construcor.newInstance();
+						
+						setValue(value, jsonObjectValue);
+
+						map.put(childKey, value);
+					}
+						break;
+					default:
+						logger.error("Unexptected childValueType {}", childValueType);
+						throw new UnexpectedException("Unexptected childValueType");
+					}
+				}
+				
+				fieldInfo.field.set(object, map);
+			}
+		} else {
+			Object fieldObject = classInfo.construcor.newInstance();
+			setValue(fieldObject, jsonObject);
+			
+			fieldInfo.field.set(object, fieldObject);
+		}
 	}
 
 	//
