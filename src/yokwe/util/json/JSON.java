@@ -2,6 +2,7 @@ package yokwe.util.json;
 
 import java.io.Reader;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import javax.json.Json;
@@ -34,6 +36,7 @@ import javax.json.JsonReader;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
+import javax.json.stream.JsonGenerator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -185,7 +188,7 @@ public final class JSON {
 			@SuppressWarnings("unchecked")
 			E ret = (E)classInfo.construcor.newInstance();
 
-			// Assume result has only one object
+			// Assume jsonReader has only one object
 			JsonObject jsonObject = jsonReader.readObject();
 			
 			setValue(ret, jsonObject);
@@ -197,6 +200,48 @@ public final class JSON {
 			throw new UnexpectedException(exceptionName, e);
 		}
 	}
+	
+	public static <E> List<E> getList(Class<E> clazz, String jsonString) {
+		ClassInfo classInfo = ClassInfo.get(clazz);
+		try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
+			// Assume result is array
+			JsonArray jsonArray = reader.readArray();
+			
+			int jsonArraySize = jsonArray.size();
+			List<E> ret = new ArrayList<>(jsonArraySize);
+			
+			for(int i = 0; i < jsonArraySize; i++) {
+				JsonValue jsonValue = jsonArray.get(i);
+				ValueType valueType = jsonValue.getValueType();
+				switch (valueType) {
+				case OBJECT:
+				{
+					@SuppressWarnings("unchecked")
+					E e = (E)classInfo.construcor.newInstance();
+					
+					JsonObject jsonObject = jsonValue.asJsonObject();
+
+					setValue(e, jsonObject);
+					ret.add(e);
+				}
+					break;
+				case NULL:
+					// Skip NULL
+					break;
+				default:
+					logger.info("Unexpected valueType  {}  {}  {}", i, valueType, jsonValue);
+					throw new UnexpectedException("Unexpected valueType");
+				}
+			}
+			
+			return ret;
+		} catch (IllegalAccessException | InstantiationException | IllegalArgumentException | InvocationTargetException | SecurityException | NoSuchMethodException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	}
+
 		
 	private static void setValue(Object object, JsonObject jsonObject) throws IllegalAccessException, IllegalArgumentException, InstantiationException, InvocationTargetException, NoSuchMethodException, SecurityException {
 		ClassInfo classInfo = ClassInfo.get(object.getClass());
@@ -423,6 +468,30 @@ public final class JSON {
 				//
 				logger.error("Unexptected mapValueClass {}", mapValueClassName);
 				throw new UnexpectedException("Unexptected mapValueClass");
+			} else if (mapValueClassName.equals("java.lang.Long")) {
+				Map<String, Long> map = new TreeMap<>();
+				
+				for(String childKey: jsonObject.keySet()) {
+					JsonValue childValue = jsonObject.get(childKey);
+					ValueType childValueType = childValue.getValueType();
+					
+					switch(childValueType) {
+					case STRING:
+					{
+						JsonString jsonStringtValue = jsonObject.getJsonString(childKey);
+
+						Long value = Long.parseLong(jsonStringtValue.getString());
+						
+						map.put(childKey, value);
+					}
+						break;
+					default:
+						logger.error("Unexptected childValueType {}", childValueType);
+						logger.error(" {}", classInfo.clazz.getTypeName());
+						logger.error(" {}", fieldInfo.field.toString());
+						throw new UnexpectedException("Unexptected childValueType");
+					}
+				}
 			} else {
 				Map<String, Object> map = new TreeMap<>();
 				
@@ -445,6 +514,8 @@ public final class JSON {
 						break;
 					default:
 						logger.error("Unexptected childValueType {}", childValueType);
+						logger.error(" {}", classInfo.clazz.getTypeName());
+						logger.error(" {}", fieldInfo.field.toString());
 						throw new UnexpectedException("Unexptected childValueType");
 					}
 				}
@@ -518,6 +589,229 @@ public final class JSON {
 		}
 			break;
 		}
+	}
+
+	
+	//
+	// toJSONString
+	//
+	private static void toJSONStringArray(JsonGenerator gen, Object[] array, String name) throws IllegalArgumentException, IllegalAccessException {
+		if (name == null) {
+			gen.writeStartArray();
+		} else {
+			gen.writeStartArray(name);
+		}
+		
+		if (array.length == 0) {
+			// Do nothing
+		} else {
+			for(Object o: array) {
+				toJSONStringVariable(gen, o, null);
+			}
+		}
+		
+		gen.writeEnd();
+	}
+	private static void toJSONStringObject(JsonGenerator gen, Object o, String name) throws IllegalArgumentException, IllegalAccessException {
+		if (name == null) {
+			gen.writeStartObject();
+		} else {
+			gen.writeStartObject(name);
+		}
+
+		Class<?>  clazz = o.getClass();
+		ClassInfo classInfo = ClassInfo.get(clazz);
+
+		for(FieldInfo fieldInfo: classInfo.fieldInfos) {
+			if (fieldInfo.ignoreField) continue;
+			
+			String fieldName  = fieldInfo.jsonName != null ? fieldInfo.jsonName : fieldInfo.name;
+			Object fieldValue = fieldInfo.field.get(o);
+			
+			if (fieldInfo.clazz.equals(Map.class)) {
+				GenericInfo genericInfo = new GenericInfo(fieldInfo.field);
+				if (genericInfo.classArguments.length != 2) {
+					logger.error("Unexptected genericInfo.classArguments.length {}", genericInfo.classArguments.length);
+					throw new UnexpectedException("Unexptected genericInfo.classArguments.length");
+				}
+				Class<?> mapKeyClass   = genericInfo.classArguments[0];
+											
+				String mapKeyClassName   = mapKeyClass.getTypeName();
+				
+//				logger.info("mapKeyClassName   {}", mapKeyClassName);
+//				logger.info("mapValueClassName {}", mapValueClassName);
+				
+				if (!mapKeyClassName.equals("java.lang.String")) {
+					logger.error("Unexptected keyTypeName {}", mapKeyClassName);
+					throw new UnexpectedException("Unexptected keyTypeName");
+				}
+				
+				@SuppressWarnings("unchecked")
+				Map<String, Object> map = (Map<String, Object>)fieldValue;
+				
+				// output map
+				gen.writeStartObject(fieldName);
+				for(Map.Entry<String, Object> e: map.entrySet()) {
+					String key   = e.getKey();
+					Object value = e.getValue();
+					
+					toJSONStringVariable(gen, value, key);
+				}
+				gen.writeEnd();
+
+			} else {
+				toJSONStringVariable(gen, fieldValue, fieldName);
+			}
+		}
+		
+		gen.writeEnd();
+	}
+	
+	/*
+
+	private static void toJSONStringList(JsonGenerator gen, Object o, String name) throws IllegalArgumentException, IllegalAccessException {
+		if (o == null) {
+			if (name == null) {
+				gen.writeNull();
+			} else {
+				gen.writeNull(name);
+			}
+		} else {
+			List<?> list = (List<?>)o;
+			
+			if (name == null) {
+				gen.writeStartArray();
+			} else {
+				gen.writeStartArray(name);
+			}
+
+			if (list.size() == 0) {
+				gen.writeEnd();
+			} else {
+				for(Object e: list) {
+					toJSONStringVariable(gen, e);
+				}
+			}
+			gen.writeEnd();
+		}
+	}
+
+	 */
+	private static void toJSONStringVariable(JsonGenerator gen, Object o, String name) throws IllegalArgumentException, IllegalAccessException {
+		if (o == null) {
+			if (name == null) {
+				gen.writeNull();
+			} else {
+				gen.writeNull(name);
+			}
+		} else {
+			Class<?> clazz = o.getClass();
+			
+			if (clazz.isArray()) {
+				toJSONStringArray(gen, (Object[])o, name);
+			} else if (simpleTypeSet.contains(clazz.getName())) {
+				toJSONStringSimpleType(gen, o, name);
+			} else if (clazz.equals(String.class)) {
+				if (name == null) {
+					gen.write((String)o);
+				} else {
+					gen.write(name, (String)o);
+				}
+			} else if (clazz.isEnum()) {
+				if (name == null) {
+					gen.write(o.toString());
+				} else {
+					gen.write(name, o.toString());
+				}
+//			} else if (List.class.isAssignableFrom(clazz)) {
+//				toJSONStringList(gen, o, name);
+			} else {
+				toJSONStringObject(gen, o, name);
+			}
+		}
+	}
+	
+	private static Set<String> simpleTypeSet = new TreeSet<>();
+	static {
+		simpleTypeSet.add(Boolean.TYPE.getName());
+		simpleTypeSet.add(Boolean.class.getName());
+		simpleTypeSet.add(Integer.TYPE.getName());
+		simpleTypeSet.add(Integer.class.getName());
+		simpleTypeSet.add(Long.TYPE.getName());
+		simpleTypeSet.add(Long.class.getName());
+		simpleTypeSet.add(Double.TYPE.getName());
+		simpleTypeSet.add(Double.class.getName());
+		simpleTypeSet.add(Float.TYPE.getName());
+		simpleTypeSet.add(Float.class.getName());
+	}
+	private static void toJSONStringSimpleType(JsonGenerator gen, Object o, String name) throws IllegalArgumentException, IllegalAccessException {
+		String clazzName = o.getClass().getName();
+
+		switch(clazzName) {
+		case "java.lang.Boolean":
+		case "boolean":
+			if (name == null) {
+				gen.write((boolean)o);
+			} else {
+				gen.write(name, (boolean)o);
+			}
+			break;
+		case "java.lang.Integer":
+		case "int":
+			if (name == null) {
+				gen.write((int)o);
+			} else {
+				gen.write(name, (int)o);
+			}
+			break;
+		case "java.lang.Long":
+		case "long":
+			if (name == null) {
+				gen.write((long)o);
+			} else {
+				gen.write(name, (long)o);
+			}
+			break;
+		case "java.lang.Double":
+		case "double":
+			if (name == null) {
+				gen.write((double)o);
+			} else {
+				gen.write(name, (double)o);
+			}
+			break;
+		case "java.lang.Float":
+		case "float":
+			if (name == null) {
+				gen.write((float)o);
+			} else {
+				gen.write(name, (float)o);
+			}
+			break;
+		default:
+			logger.error("Unexpected type");
+			logger.error("  clazzName {}", clazzName);
+			logger.error("  name      {}", name);
+			throw new UnexpectedException("Unexpected type");
+		}
+	}
+
+	private static void toJSONStringVariable(JsonGenerator gen, Object o) throws IllegalArgumentException, IllegalAccessException {
+		toJSONStringVariable(gen, o, null);
+	}
+	
+	public static String toJSONString(Object object) {
+		StringWriter writer = new StringWriter();
+		
+		try (JsonGenerator gen = Json.createGenerator(writer)) {
+			toJSONStringVariable(gen, object);
+		} catch (IllegalArgumentException | IllegalAccessException e) {
+			String exceptionName = e.getClass().getSimpleName();
+			logger.error("{} {}", exceptionName, e);
+			throw new UnexpectedException(exceptionName, e);
+		}
+	
+		return writer.toString();
 	}
 
 }
