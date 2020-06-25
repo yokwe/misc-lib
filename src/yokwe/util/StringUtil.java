@@ -283,7 +283,6 @@ public class StringUtil {
 
 		private static Map<String, ClassInfo> map = new TreeMap<>();
 		
-		final Class<?>    clazz;
 		final FieldInfo[] fieldInfos;
 		
 		static ClassInfo get(Object o) {
@@ -299,8 +298,6 @@ public class StringUtil {
 		}
 		
 		ClassInfo(Class<?> clazz) {
-			this.clazz = clazz;
-			
 			{
 				List<FieldInfo> list = new ArrayList<>();
 				
@@ -383,8 +380,8 @@ public class StringUtil {
 								throw new UnexpectedException("Unexptected useTimeZone value");
 							}
 						} else {
-							logger.error("No useTimeZone annotation  {}.{}", classInfo.clazz.getName(), fieldInfo.name);
-							throw new UnexpectedException("No useTimeZone annotation");
+							// Treat as LOCAL
+							stringValue = offsetDateTime.atZoneSameInstant(LOCAL).toLocalDateTime().toString();
 						}
 						line.append(stringValue);
 					} else if (fieldInfo.isArray) {
