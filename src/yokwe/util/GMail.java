@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
-import javax.json.JsonObject;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.PasswordAuthentication;
@@ -17,9 +16,9 @@ import javax.mail.internet.MimeMessage;
 import org.slf4j.LoggerFactory;
 
 import yokwe.UnexpectedException;
-import yokwe.util.json.JSONBase;
+import yokwe.util.json.JSON;
 
-public class GMail extends JSONBase {
+public class GMail {
 	static final org.slf4j.Logger logger = LoggerFactory.getLogger(GMail.class);
 
 	public static final String PATH_DIR = "tmp/gmail";
@@ -38,11 +37,11 @@ public class GMail extends JSONBase {
 			throw new UnexpectedException("Cannot read file");
 		}
 		String jsonString = FileUtil.read().file(file);
-		return JSONBase.getInstance(GMail.class, jsonString);
+		return JSON.unmarshal(GMail.class, jsonString);
 	}
 	public static void save(String name, GMail value) {
 		File file = new File(getPath(name));
-		String jsonString = value.toJSONString();
+		String jsonString = JSON.toJSONString(value);
 		FileUtil.write().file(file, jsonString);
 	}
 	
@@ -59,14 +58,15 @@ public class GMail extends JSONBase {
 		this.config   = new TreeMap<>();
 	}
 	
-	public GMail(JsonObject jsonObject) {
-		super(jsonObject);
+	@Override
+	public String toString() {
+		return StringUtil.toString(this);
 	}
 	
 	public static void sendMessage(GMail gmail, String subject, String text) {
         Properties prop = new Properties();
         gmail.config.forEach((k, v) -> prop.put(k, v));
-                
+        
         Session session = Session.getInstance(prop,
             new javax.mail.Authenticator() {
                 protected PasswordAuthentication getPasswordAuthentication() {
@@ -110,14 +110,20 @@ public class GMail extends JSONBase {
 		GMail.save(accountName, account);
 		GMail copy = GMail.load(accountName);
 
-		logger.info("toString   {}", account.toJSONString());
-		logger.info("copyString {}", copy.toJSONString());
+		logger.info("toString   {}", account);
+		logger.info("copyString {}", copy);
 	}
 
 	public static void main(String[] args) {
 		logger.info("START");
 		
+		{
+			GMail gmail = GMail.load(DEFAULT_NAME);
+			logger.info("gmail {}", gmail);
+			logger.info("gmail {}", JSON.toJSONString(gmail));
+		}
 //	   	GMail.writeAccountFile(GMail.DEFAULT_NAME, "hasegawa.yasuhiro@gmail.com", "YOUR_PASSWORD", "hasegawa.yasuhiro+ubuntu-dev@gmail.com");
+//		sendMessage("AAA", "BBB");
 		
 		logger.info("STOP");		
 	}
