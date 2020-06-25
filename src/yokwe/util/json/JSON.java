@@ -463,12 +463,10 @@ public final class JSON {
 				logger.error("Unexptected keyTypeName {}", mapKeyClassName);
 				throw new UnexpectedException("Unexptected keyTypeName");
 			}
-
-			if (mapValueClass.isPrimitive()) {
-				//
-				logger.error("Unexptected mapValueClass {}", mapValueClassName);
-				throw new UnexpectedException("Unexptected mapValueClass");
-			} else if (mapValueClassName.equals("java.lang.Long")) {
+			
+			switch(mapValueClassName) {
+			case "java.lang.Long":
+			{
 				Map<String, Long> map = new TreeMap<>();
 				
 				for(String childKey: jsonObject.keySet()) {
@@ -492,23 +490,25 @@ public final class JSON {
 						throw new UnexpectedException("Unexptected childValueType");
 					}
 				}
-			} else {
-				Map<String, Object> map = new TreeMap<>();
+				
+				fieldInfo.field.set(object, map);
+			}
+				break;
+			case "java.lang.String":
+			{
+				Map<String, String> map = new TreeMap<>();
 				
 				for(String childKey: jsonObject.keySet()) {
 					JsonValue childValue = jsonObject.get(childKey);
 					ValueType childValueType = childValue.getValueType();
 					
 					switch(childValueType) {
-					case OBJECT:
+					case STRING:
 					{
-						JsonObject jsonObjectValue = jsonObject.getJsonObject(childKey);
-						
-						ClassInfo valueClassInfo = ClassInfo.get(mapValueClass);
-						Object value = valueClassInfo.construcor.newInstance();
-						
-						setValue(value, jsonObjectValue);
+						JsonString jsonStringtValue = jsonObject.getJsonString(childKey);
 
+						String value = jsonStringtValue.getString();
+						
 						map.put(childKey, value);
 					}
 						break;
@@ -522,6 +522,45 @@ public final class JSON {
 				
 				fieldInfo.field.set(object, map);
 			}
+				break;
+			default:
+				if (mapValueClass.isPrimitive()) {
+					//
+					logger.error("Unexptected mapValueClass {}", mapValueClassName);
+					throw new UnexpectedException("Unexptected mapValueClass");
+				} else {
+					Map<String, Object> map = new TreeMap<>();
+					
+					for(String childKey: jsonObject.keySet()) {
+						JsonValue childValue = jsonObject.get(childKey);
+						ValueType childValueType = childValue.getValueType();
+						
+						switch(childValueType) {
+						case OBJECT:
+						{
+							JsonObject jsonObjectValue = jsonObject.getJsonObject(childKey);
+							
+							ClassInfo valueClassInfo = ClassInfo.get(mapValueClass);
+							Object value = valueClassInfo.construcor.newInstance();
+							
+							setValue(value, jsonObjectValue);
+
+							map.put(childKey, value);
+						}
+							break;
+						default:
+							logger.error("Unexptected childValueType {}", childValueType);
+							logger.error(" {}", classInfo.clazz.getTypeName());
+							logger.error(" {}", fieldInfo.field.toString());
+							throw new UnexpectedException("Unexptected childValueType");
+						}
+					}
+					
+					fieldInfo.field.set(object, map);
+				}
+				break;
+			}
+
 		} else {
 			Object fieldObject = classInfo.construcor.newInstance();
 			setValue(fieldObject, jsonObject);
