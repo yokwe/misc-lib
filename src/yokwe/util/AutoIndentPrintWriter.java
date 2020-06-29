@@ -1,6 +1,9 @@
 package yokwe.util;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +90,18 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 		
 		return ret.toString();
 	}
+	
+	private boolean layout = false;
+	private List<String> layoutLineList = new ArrayList<>();
+
 	public void println(String string) {
+		if (layout) {
+			layoutLineList.add(string);
+		} else {
+			printlnInternal(string);
+		}
+	}
+	private void printlnInternal(String string) {
 		String strippedString = stripString(string);
 		
 		// adjust level
@@ -143,4 +157,72 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 		String string = String.format(format, args);
 		println(string);
 	}
+	
+	public enum Layout {
+		LEFT, RIGHT
+	}
+	public void prepareLayout() {
+		if (layout) {
+			logger.error("Unexpected state");
+			throw new UnexpectedException("Unexpected state");
+		}
+		
+		layout = true;
+		layoutLineList.clear();
+	}
+	public void layout(Layout... layouts) {
+		if (!layout) {
+			logger.error("Unexpected state");
+			throw new UnexpectedException("Unexpected state");
+		}
+
+		int count = layouts.length;
+		String[][] tokens = new String[layoutLineList.size()][count];
+		{
+			for(int i = 0; i < layoutLineList.size(); i++) {
+				String line = layoutLineList.get(i);
+				String[] token = line.split("[ ]+");
+				if (token.length != count) {
+					logger.error("Unecpected line");
+					logger.error("  count {}!", count);
+					logger.error("  token {}!", Arrays.asList(token));
+					logger.error("  line  {}!", line);
+					throw new UnexpectedException("Unecpected line");
+				}
+				for(int j = 0; j < token.length; j++) {
+					tokens[i][j] = token[j];
+				}
+			}	
+		}
+		
+		int width[] = new int[count];
+		{
+			for(int i = 0; i < width.length; i++) width[i] = 0;
+			for(int i = 0; i < tokens.length; i++) {
+				for(int j = 0; j < width.length; j++) {
+					width[j] = Math.max(width[j], tokens[i][j].length());
+				}
+			}
+		}
+		
+		final String format;
+		{
+			List<String> list = new ArrayList<>();
+			for(int i = 0; i < count; i++) {
+				list.add(String.format("%%%s%ds", layouts[i] == Layout.LEFT ? "-" : "", width[i]));
+			}
+			format = String.join(" ", list);
+		}
+		
+		for(int i = 0; i < tokens.length; i++) {
+			String string = String.format(format, (Object[])tokens[i]);
+			logger.info("string  {}", string);
+			printlnInternal(string);
+		}
+		
+		//
+		layout = false;
+		layoutLineList.clear();
+	}
+	
 }
