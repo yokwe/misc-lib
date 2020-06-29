@@ -216,7 +216,6 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 		
 		for(int i = 0; i < tokens.length; i++) {
 			String string = String.format(format, (Object[])tokens[i]);
-			logger.info("string  {}", string);
 			printlnInternal(string);
 		}
 		
