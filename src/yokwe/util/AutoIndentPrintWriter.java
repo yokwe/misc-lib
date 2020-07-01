@@ -209,7 +209,11 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 		{
 			List<String> list = new ArrayList<>();
 			for(int i = 0; i < count; i++) {
-				list.add(String.format("%%%s%ds", layouts[i] == Layout.LEFT ? "-" : "", width[i]));
+				if (i == (count - 1) && layouts[i] == Layout.LEFT) {
+					list.add("%s");
+				} else {
+					list.add(String.format("%%%s%ds", layouts[i] == Layout.LEFT ? "-" : "", width[i]));
+				}
 			}
 			format = String.join(" ", list);
 		}
