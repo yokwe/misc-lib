@@ -181,7 +181,7 @@ public class AutoIndentPrintWriter implements AutoCloseable {
 		{
 			for(int i = 0; i < layoutLineList.size(); i++) {
 				String line = layoutLineList.get(i);
-				String[] token = line.split("[ ]+");
+				String[] token = line.split("[ ]+", count);
 				if (token.length != count) {
 					logger.error("Unecpected line");
 					logger.error("  count {}!", count);
