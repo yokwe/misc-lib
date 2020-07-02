@@ -603,8 +603,18 @@ public final class JSON {
 		}
 			break;
 		default:
-		{				
+		{
 			int jsonArraySize = jsonArray.size();
+			
+			// special case of null array
+			if (jsonArraySize == 1) {
+				JsonValue jsonValue = jsonArray.get(0);
+				if (jsonValue.getValueType() == JsonValue.ValueType.NULL) {
+					fieldInfo.field.set(object, null);
+					return;
+				}
+			}
+			
 			Object[] array = (Object[])Array.newInstance(componentType, jsonArraySize);
 
 			ClassInfo classInfo = ClassInfo.get(componentType);
