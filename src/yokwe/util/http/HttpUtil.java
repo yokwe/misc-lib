@@ -113,7 +113,7 @@ public class HttpUtil {
 			this.url       = url;
 			this.result    = result;
 			this.rawData   = rawData;
-			this.headerMap    = new TreeMap<>();
+			this.headerMap = new TreeMap<>();
 			Arrays.asList(response.getHeaders()).stream().forEach(o -> this.headerMap.put(o.getName(), o.getValue()));
 			this.timestamp = LocalDateTime.now(ZoneId.systemDefault()).format(DATE_TIME_FORMATTER);
 			
@@ -204,7 +204,7 @@ public class HttpUtil {
 				}
 
 				int len = (int)entity.getContentLength();
-				ByteArrayOutputStream baos = new ByteArrayOutputStream(len);
+				ByteArrayOutputStream baos = new ByteArrayOutputStream(0 <= len ? len : 65536);
 				try {
 					entity.writeTo(baos);
 					content = baos.toByteArray();
