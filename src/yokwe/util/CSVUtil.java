@@ -561,6 +561,24 @@ public class CSVUtil {
 
 		public List<E> file(Reader reader) {
 			try (BufferedReader br = new BufferedReader(reader, BUFFER_SIZE)) {
+				// Peek one char to check end of stream and byte order mark
+				{
+					br.mark(1);
+					int firstChar = br.read();
+					switch(firstChar) {
+					case -1:
+						// end of stream.
+						return null;
+					case 0xFEFF:
+						// byte order mark
+						break;
+					default:
+						// resets the stream to the most recent mark.
+						br.reset();
+						break;
+					}
+				}
+
 				if (context.withHeader) {
 					readHeader(br);
 				}
