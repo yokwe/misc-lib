@@ -19,9 +19,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -495,7 +497,12 @@ public class CSVUtil {
 						if (value.isEmpty() || value.equals("0")) {
 							localDateTime = NULL_LOCAL_DATE_TIME;
 						} else {
-							localDateTime = LocalDateTime.parse(value);
+							if (value.matches("\\d+")) {
+								long number = Long.parseLong(value);
+								localDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(number), ZoneOffset.UTC);
+							} else {
+								localDateTime = LocalDateTime.parse(value);
+							}
 						}
 						
 						fieldInfo.field.set(data, localDateTime);
@@ -508,7 +515,12 @@ public class CSVUtil {
 						if (value.isEmpty() || value.equals("0")) {
 							localDate = NULL_LOCAL_DATE;
 						} else {
-							localDate = LocalDate.parse(value);
+							if (value.matches("\\d+")) {
+								long number = Long.parseLong(value);
+								localDate = LocalDate.ofInstant(Instant.ofEpochMilli(number), ZoneOffset.UTC);
+							} else {
+								localDate = LocalDate.parse(value);
+							}
 						}
 						
 						fieldInfo.field.set(data, localDate);
