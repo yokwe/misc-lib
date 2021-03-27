@@ -335,6 +335,9 @@ public final class JSON {
 		case "java.time.LocalDateTime":
 			fieldInfo.field.set(object, LocalDateTime.ofInstant(Instant.ofEpochMilli(jsonNumber.longValue()), ZoneOffset.UTC));
 			break;
+		case "java.time.LocalDate":
+			fieldInfo.field.set(object, LocalDate.ofInstant(Instant.ofEpochMilli(jsonNumber.longValue()), ZoneOffset.UTC));
+			break;
 		default:
 			logger.error("Unexptected type {}", fieldInfo.field.toString());
 			throw new UnexpectedException("Unexptected type");
