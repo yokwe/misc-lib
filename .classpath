@@ -12,16 +12,12 @@
 	<classpathentry kind="lib" path="data/jar/javax.json-1.1.jar"/>
 	<classpathentry kind="lib" path="data/jar/httpclient-4.5.5.jar"/>
 	<classpathentry kind="lib" path="data/jar/httpcore-4.4.9.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/unoloader.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/unoil.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/juh.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/jurt.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/libreoffice/program/classes/ridl.jar"/>
 	<classpathentry kind="lib" path="data/jar/commons-logging-1.2.jar"/>
 	<classpathentry kind="lib" path="data/jar/javax.mail.jar"/>
 	<classpathentry kind="lib" path="data/jar/javamail-JAVAMAIL-1_6_2.zip"/>
 	<classpathentry kind="lib" path="data/jar/httpcore5-h2-5.0.jar" sourcepath="data/jar/httpcomponents-core-5.0-src.zip"/>
 	<classpathentry kind="lib" path="data/jar/httpcore5-5.0.jar" sourcepath="data/jar/httpcomponents-core-5.0-src.zip"/>
 	<classpathentry kind="lib" path="data/jar/jakarta.activation.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LIBRE_OFFICE"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
