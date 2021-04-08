@@ -6,18 +6,20 @@
 	<property name="dir.build.bin" location="${dir.build}/bin" />
 	<property name="dir.build.jar" location="${dir.build}/jar" />
 
-    <property name="dir.libreoffice" location="/usr/lib/libreoffice/program" />
+	<condition property="dir.libreoffice" value="/usr/lib/libreoffice/program">
+		<os name="Linux" />
+	</condition>
+        <condition property="dir.libreoffice" value="/usr/local/lib/libreoffice/program">
+		<os name="FreeBSD" />
+	</condition>
+	<fail unless="dir.libreoffice">Unknown os name ${os.name}</fail>
 	
 	<path id="ext.jar">
 		<fileset dir="${dir.ext.jar}">
 			<include name="*.jar" />
 		</fileset>
         <fileset dir="${dir.libreoffice}/classes">
-            <include name="unoloader.jar" />
-            <include name="unoil.jar" />
-            <include name="juh.jar" />
-            <include name="jurt.jar" />
-            <include name="ridl.jar" />
+            <include name="libreoffice.jar" />
         </fileset>
 	</path>
 	
